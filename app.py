@@ -21,7 +21,7 @@ if start_project:
         doc_type = st.text_input(label="Enter preferred document type", value="Non-technical Document")
         audience = st.text_input(label="Who are your audience", value="Product managers and technical writers")
         goal = st.text_input(label="What's the goal of this document?", value="Develop a non-technical documentation for the product release")
-        scope = st.text_input(label="State the project scope", value="Using fastdoc as a technical/non-technical documentation tool")
+        tone = st.text_input(label="What tone should your document have", value="Professional Write-up")
 
         submit = st.button(label="Submit")
         divider()
@@ -34,7 +34,7 @@ if start_project:
         st.write("Generating write up...")
         generate_text_res = init_project(dict_to_json({
             'goal': goal,
-            'scope': scope,
+            'tone': tone,
             'key': epic_key,
             'doc_type': doc_type,
             'audience': audience,

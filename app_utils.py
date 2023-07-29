@@ -27,7 +27,7 @@ from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
 load_dotenv()
 
-TEST_LOCAL = False
+TEST_LOCAL = True
 
 if TEST_LOCAL:
     # Local Development
@@ -38,14 +38,10 @@ else:
 
 openai.api_key = OPENAI_API_KEY
 
-generation_prompt_template = lambda doc_type, scope, goal, audience: f"""Use the context below to write a {doc_type} making use of the defined scope. Ensure you use define {doc_type} formats:
-
-    Scope: {scope}
-    Goal: {goal}
-    Audience: {audience} """ + """
+generation_prompt_template = lambda doc_type, tone, goal, audience: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}" and ensure the writeup targets the audience {audience}. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed:""" + """
 
     Context: {context}
-    Blog post: """
+    Generated Text: """
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
 You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only.
@@ -58,14 +54,8 @@ Chatbot:"""
 
 base_url = "https://fastdoc-jira-integration.onrender.com/"
 
-generation_llm = ChatOpenAI(
-    temperature=0.8,
-    model_name="gpt-3.5-turbo",
-    max_tokens=1280
-)
-
 conversational_llm = ChatOpenAI(
-    temperature=0.8,
+    temperature=0.5,
     model_name="gpt-3.5-turbo",
     max_tokens=2048
 )
@@ -250,17 +240,29 @@ def load(project_id):
         })
 
 
-def generate_text(project_id, text_content, goal, scope, audience, doc_type):
+def generate_text(project_id, text_content, goal, tone, audience, doc_type, temperature='variable'):
     """Function to generate report"""
+
+    temp = {
+        'stable': 0.,
+        'variable': .5,
+        'highly variable': .9
+    }
+
+    generation_llm = ChatOpenAI(
+        temperature=temp[temperature],
+        model_name="gpt-3.5-turbo",
+        max_tokens=1280
+    )
 
     generated_prompt = PromptTemplate(
         template=generation_prompt_template(
-            doc_type, scope, goal, audience
+            doc_type, tone, goal, audience
         ), input_variables=["context"]
     )
 
     docs = text_to_doc(text_content)
-    index = embed_docs(docs).similarity_search(scope, k=4)
+    index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
     inputs = [
         {"context": i.page_content}
         for i in index
@@ -310,13 +312,19 @@ def init_project(json_input):
 
     content, issue_key_type = write_out_report(keys['key'])
 
+    try:
+        temp = keys['temperature']
+    except KeyError:
+        temp = 'variable'
+
     text = generate_text(
         keys['project_id'],
         content,
         keys['goal'],
-        keys['scope'],
+        keys['tone'],
         keys['audience'],
-        keys['doc_type']
+        keys['doc_type'],
+        temperature=temp
     )
 
     return dict_to_json({
