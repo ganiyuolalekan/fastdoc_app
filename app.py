@@ -17,7 +17,14 @@ if start_project:
     with st.sidebar:
         st.markdown("### 1. Input to generate text")
         epic_key = st.text_input(label="Enter Issue key - eg FD-5", value="FD-5")
-        project_id = st.number_input(label="Enter any number to store your result with", value=12345),
+        temperature = st.selectbox(
+            label="Select a temperature for the model",
+            options=[
+                'stable',
+                'variable',
+                'highly variable'
+            ], index=1
+        )
         doc_type = st.text_input(label="Enter preferred document type", value="Non-technical Document")
         audience = st.text_input(label="Who are your audience", value="Product managers and technical writers")
         goal = st.text_input(label="What's the goal of this document?", value="Develop a non-technical documentation for the product release")
@@ -38,7 +45,8 @@ if start_project:
             'key': epic_key,
             'doc_type': doc_type,
             'audience': audience,
-            'project_id': project_id[0],
+            'temperature': temperature,
+            'project_id': 12345,
         }))
         display_generated = True
 
@@ -59,7 +67,7 @@ if start_project:
     if submit_2:
         st.write("Generating write up...")
         suggest_text_res = return_project_value(dict_to_json({
-            'project_id': project_id[0],
+            'project_id': 12345,
             'user_query': comment
         }))
         display_comment = True
@@ -75,7 +83,7 @@ if start_project:
 
     if delete:
         input_delete = delete_project(dict_to_json({
-            'project_id': project_id[0]
+            'project_id': 12345
         }))
         display_delete = True
 
