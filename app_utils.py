@@ -27,7 +27,7 @@ from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
 load_dotenv()
 
-TEST_LOCAL = True
+TEST_LOCAL = False
 
 if TEST_LOCAL:
     # Local Development
