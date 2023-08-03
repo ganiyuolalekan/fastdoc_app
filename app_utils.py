@@ -38,7 +38,10 @@ else:
 
 openai.api_key = OPENAI_API_KEY
 
-generation_prompt_template = lambda doc_type, tone, goal, audience: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}" and ensure the writeup targets the audience {audience}. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed:""" + """
+INPUT_TOKEN_SIZE = 1000
+OUTPUT_TOKEN_SIZE = 1000
+
+generation_prompt_template = lambda doc_type, tone, goal=None: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}". If the provided goal in None, please make use of the information you have towards the aim of the scope/context. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed:""" + """
 
     Context: {context}
     Generated Text: """
@@ -57,7 +60,7 @@ base_url = "https://fastdoc-jira-integration.onrender.com/"
 conversational_llm = ChatOpenAI(
     temperature=0.5,
     model_name="gpt-3.5-turbo",
-    max_tokens=2048
+    max_tokens=OUTPUT_TOKEN_SIZE
 )
 
 conversational_prompt = PromptTemplate(
@@ -115,22 +118,29 @@ def get_issues(issue_key):
 
 
 def write_out_report(issue_key):
+    issue = json_to_dict(get_issues(issue_key))
+
+    issues = issue['issue']['issues']
+
+    withdraw_pattern = re.compile(r'with\s?drawn*|with\s?drew', re.IGNORECASE)
+
     try:
-        issue = json_to_dict(get_issues(issue_key))
-
-        issues = issue['issue']['issues']
-
-        try:
-            if issues[0]['fields']['parent']['key'] == issue_key:
-                issue_key_type = "Parent Issue"
-            else:
-                issue_key_type = "Child Issue"
-        except KeyError:
+        if issues[0]['fields']['parent']['key'] == issue_key:
             issue_key_type = "Parent Issue"
+        else:
+            issue_key_type = "Child Issue"
+    except KeyError:
+        issue_key_type = "Parent Issue"
 
-        content = ""
-        for _fields in issues:
-            fields = _fields['fields']
+    content = ""
+    for _fields in issues:
+        fields = _fields['fields']
+        try:
+            ticket_type = fields['parent']['fields']['status']['name']
+        except KeyError:
+            ticket_type = fields['status']['name']
+
+        if not withdraw_pattern.match(ticket_type):
             content += f"Summary:\n\n{fields['summary']}\n\n"
             content += f"Description:\n\n{fields['description']}\n\n"
 
@@ -139,9 +149,7 @@ def write_out_report(issue_key):
             for comment in comments:
                 content += f"{comment['body']}\n"
 
-        return clean_string(content.strip()), issue_key_type
-    except:
-        return open("data/data.txt", 'r').read()[:2000], "FD-5"
+    return clean_string(content.strip()), issue_key_type
 
 
 def text_to_doc(text, chunk_size=1600):
@@ -240,7 +248,7 @@ def load(project_id):
         })
 
 
-def generate_text(project_id, text_content, goal, tone, audience, doc_type, temperature='variable'):
+def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
     """Function to generate report"""
 
     temp = {
@@ -252,17 +260,21 @@ def generate_text(project_id, text_content, goal, tone, audience, doc_type, temp
     generation_llm = ChatOpenAI(
         temperature=temp[temperature],
         model_name="gpt-3.5-turbo",
-        max_tokens=1280
+        max_tokens=OUTPUT_TOKEN_SIZE
     )
 
     generated_prompt = PromptTemplate(
         template=generation_prompt_template(
-            doc_type, tone, goal, audience
+            doc_type, tone, goal
         ), input_variables=["context"]
     )
 
     docs = text_to_doc(text_content)
-    index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
+    if goal is not None:
+        index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
+    else:
+        index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
+
     inputs = [
         {"context": i.page_content}
         for i in index
@@ -310,7 +322,7 @@ def init_project(json_input):
 
     keys = json_to_dict(json_input)
 
-    content, issue_key_type = write_out_report(keys['key'])
+    content, issue_key_type = write_out_report(keys['scope'])
 
     try:
         temp = keys['temperature']
@@ -319,11 +331,10 @@ def init_project(json_input):
 
     text = generate_text(
         keys['project_id'],
-        content,
-        keys['goal'],
+        content[: INPUT_TOKEN_SIZE],
         keys['tone'],
-        keys['audience'],
         keys['doc_type'],
+        keys['goal'],
         temperature=temp
     )
 
