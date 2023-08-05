@@ -381,7 +381,7 @@ def init_project(json_input):
 
     text = generate_text(
         keys['project_id'],
-        content[: INPUT_TOKEN_SIZE],
+        content,
         keys['tone'],
         keys['doc_type'],
         keys['goal'],
