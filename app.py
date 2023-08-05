@@ -47,11 +47,6 @@ if start_project:
         divider()
 
     if submit:
-        st.markdown("## Here's the extracted report from Jira".upper())
-        divider()
-        st.write(write_out_report(scope)[0])
-        divider()
-        st.write("Generating write up...")
         generate_text_res = init_project(dict_to_json({
             'goal': goal if goal != "" else None,
             'tone': tone,
@@ -60,7 +55,9 @@ if start_project:
             'temperature': temperature,
             'project_id': 12345,
         }))
-        display_generated = True
+
+        if generate_text_res is not None:
+            display_generated = True
 
     if display_generated:
         divider()
@@ -82,7 +79,9 @@ if start_project:
             'project_id': 12345,
             'user_query': comment
         }))
-        display_comment = True
+
+        if suggest_text_res is not None:
+            display_comment = True
 
     if display_comment:
         divider()
@@ -97,7 +96,9 @@ if start_project:
         input_delete = delete_project(dict_to_json({
             'project_id': 12345
         }))
-        display_delete = True
+
+        if input_delete is not None:
+            display_delete = True
 
     if display_delete:
         st.write(delete_project(input_delete))

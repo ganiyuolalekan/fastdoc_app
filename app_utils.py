@@ -5,8 +5,10 @@ import streamlit as st
 import os
 import re
 import json
+import time
 import openai
 import requests
+import functools
 
 from dotenv import load_dotenv
 
@@ -73,6 +75,33 @@ SEPARATORS = ["\n\n", "\n", ".", "!", "?", ",", " ", ""]
 db = {}
 
 
+# Wrapper function to time other functions
+# Wrapper function to time other functions
+def time_function(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        st.markdown(f"> {func.__name__} execution time: {execution_time:.4f} seconds")
+        return result
+
+    return wrapper
+
+
+def exceptions_handler(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            st.markdown(f"> The program failed, an error occurred in `{func.__name__}`: **{e}**. Please reach out to the developer")
+            return None
+
+    return wrapper
+
+
 def app_meta():
     """Adds app meta data to web applications"""
 
@@ -102,6 +131,7 @@ def dict_to_json(dict_data):
     return json.dumps(dict_data)
 
 
+@time_function
 def clean_string(input_string):
     cleaned_string = re.sub(r"http\S+|www\S+|https\S+", "", input_string)
     cleaned_string = re.sub(r"\[\~accountid:[a-fA-F0-9]+\]", "", cleaned_string)
@@ -109,6 +139,7 @@ def clean_string(input_string):
     return cleaned_string
 
 
+@time_function
 def get_issues(issue_key):
     url = base_url + f'issues/{issue_key}'
 
@@ -117,6 +148,7 @@ def get_issues(issue_key):
     return response.text
 
 
+@exceptions_handler
 def write_out_report(issue_key):
     issue = json_to_dict(get_issues(issue_key))
 
@@ -152,6 +184,7 @@ def write_out_report(issue_key):
     return clean_string(content.strip()), issue_key_type
 
 
+@time_function
 def text_to_doc(text, chunk_size=1600):
     """
     PRIVATE text_chunking  METHOD
@@ -178,6 +211,7 @@ def text_to_doc(text, chunk_size=1600):
     return docs
 
 
+@time_function
 def convert_report(text):
     """Converts generated text into a document"""
 
@@ -188,6 +222,7 @@ def convert_report(text):
     return [doc]
 
 
+@time_function
 def embed_docs(docs: List[Document]) -> VectorStore:
     """Embeds a list of Documents and returns a FAISS index"""
 
@@ -197,6 +232,7 @@ def embed_docs(docs: List[Document]) -> VectorStore:
     return index
 
 
+@time_function
 def write_memory(conversation):
     """Writes from a memory and create a chain for the conversational model"""
 
@@ -210,6 +246,7 @@ def write_memory(conversation):
     )
 
 
+@time_function
 def read_memory(chain):
     """Reads a memory and stores the serialized file"""
 
@@ -218,6 +255,7 @@ def read_memory(chain):
     return dict_to_json(messages_to_dict(extracted_messages))
 
 
+@time_function
 def save(project_id, generated_report, generated_text_tracker, conv_chain, return_json_data=False):
     """
     Save model chain by returning it's json value and
@@ -236,6 +274,7 @@ def save(project_id, generated_report, generated_text_tracker, conv_chain, retur
         return result_json
 
 
+@time_function
 def load(project_id):
     """Loads a FastDoc object from a json object"""
 
@@ -248,48 +287,53 @@ def load(project_id):
         })
 
 
+@time_function
 def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
     """Function to generate report"""
 
-    temp = {
-        'stable': 0.,
-        'variable': .5,
-        'highly variable': .9
-    }
+    try:
+        temp = {
+            'stable': 0.,
+            'variable': .5,
+            'highly variable': .9
+        }
 
-    generation_llm = ChatOpenAI(
-        temperature=temp[temperature],
-        model_name="gpt-3.5-turbo",
-        max_tokens=OUTPUT_TOKEN_SIZE
-    )
+        generation_llm = ChatOpenAI(
+            temperature=temp[temperature],
+            model_name="gpt-3.5-turbo",
+            max_tokens=OUTPUT_TOKEN_SIZE
+        )
 
-    generated_prompt = PromptTemplate(
-        template=generation_prompt_template(
-            doc_type, tone, goal
-        ), input_variables=["context"]
-    )
+        generated_prompt = PromptTemplate(
+            template=generation_prompt_template(
+                doc_type, tone, goal
+            ), input_variables=["context"]
+        )
 
-    docs = text_to_doc(text_content)
-    if goal is not None:
-        index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
-    else:
-        index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
+        docs = text_to_doc(text_content)
+        if goal is not None:
+            index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
+        else:
+            index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
 
-    inputs = [
-        {"context": i.page_content}
-        for i in index
-    ]
-    gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
-    generated_report = gen_chain.apply(inputs)[0]['text'].strip()
+        inputs = [
+            {"context": i.page_content}
+            for i in index
+        ]
+        gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
+        generated_report = gen_chain.apply(inputs)[0]['text'].strip()
 
-    memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
-    conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
+        memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
+        conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
 
-    save(project_id, generated_report, [generated_report], read_memory(conv_chain))
+        save(project_id, generated_report, [generated_report], read_memory(conv_chain))
 
-    return generated_report
+        return generated_report
+    except Exception as e:
+        st.write(f"")
 
 
+@time_function
 def regenerate_report(project_id, human_input):
     """Regenerates the results based on the users request"""
 
@@ -315,14 +359,20 @@ def regenerate_report(project_id, human_input):
         return json_data
 
 
+@exceptions_handler
 def init_project(json_input):
     """
     Initializes a new project and creates in id for it in our local database
     """
 
+    st.markdown("## Here's the extracted report from Jira".upper())
+    divider()
+
     keys = json_to_dict(json_input)
 
     content, issue_key_type = write_out_report(keys['scope'])
+    st.write(content)
+    divider()
 
     try:
         temp = keys['temperature']
@@ -346,6 +396,7 @@ def init_project(json_input):
     })
 
 
+@exceptions_handler
 def return_project_value(json_input):
     """Responsible for continuous query for a particular database"""
 
@@ -366,6 +417,7 @@ def return_project_value(json_input):
         return re_gen_report
 
 
+@exceptions_handler
 def delete_project(json_input):
     """Responsible for delete a project from ML database"""
 
