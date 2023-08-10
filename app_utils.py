@@ -168,7 +168,7 @@ def write_out_report(issue_key):
     for _fields in issues:
         fields = _fields['fields']
         try:
-            ticket_type = fields['parent']['fields']['status']['name']
+            ticket_type = fields['fields']['status']['name']
         except KeyError:
             ticket_type = fields['status']['name']
 
