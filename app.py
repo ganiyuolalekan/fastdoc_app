@@ -63,8 +63,11 @@ if start_project:
         divider()
         st.markdown("## Here's the generated text".upper())
         divider()
+        title = json_to_dict(generate_text_res)['title']
         text = json_to_dict(generate_text_res)['generated_text']
-        st.write(text)
+        st.write(f"TITLE: {title}")
+        divider()
+        st.write(f"GENERATED TEXT: {text}")
         divider()
 
     with st.sidebar:

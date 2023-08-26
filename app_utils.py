@@ -40,13 +40,9 @@ else:
 
 openai.api_key = OPENAI_API_KEY
 
-INPUT_TOKEN_SIZE = 1000
-OUTPUT_TOKEN_SIZE = 1000
+generation_prompt_template = lambda doc_type, tone, goal=None: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}". If the provided goal in None, please make use of the information you have towards the aim of the scope/context. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed. Give you generated text a descriptive title:""" + """You must return your result in this json format alone placing only the title in "title" and only the generated report (without titles or label information) in "generated_text"  [["title", "..."], ["generated_text", '''...''']]
 
-generation_prompt_template = lambda doc_type, tone, goal=None: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}". If the provided goal in None, please make use of the information you have towards the aim of the scope/context. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed:""" + """
-
-    Context: {context}
-    Generated Text: """
+    Context: {context}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
 You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only.
@@ -62,7 +58,7 @@ base_url = "https://fastdoc-jira-integration.onrender.com/"
 conversational_llm = ChatOpenAI(
     temperature=0.5,
     model_name="gpt-3.5-turbo",
-    max_tokens=OUTPUT_TOKEN_SIZE
+    max_tokens=1280
 )
 
 conversational_prompt = PromptTemplate(
@@ -288,49 +284,57 @@ def load(project_id):
 
 
 @time_function
+def get_title_generated_text(response):
+    result = {'title': None, 'generated_text': None}
+
+    for i, res in enumerate(eval(response)):
+        key, content = res
+        result[key] = content
+
+    return result
+
+
+@time_function
 def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
     """Function to generate report"""
 
-    try:
-        temp = {
-            'stable': 0.,
-            'variable': .5,
-            'highly variable': .9
-        }
+    temp = {
+        'stable': 0.,
+        'variable': .5,
+        'highly variable': .9
+    }
 
-        generation_llm = ChatOpenAI(
-            temperature=temp[temperature],
-            model_name="gpt-3.5-turbo",
-            max_tokens=OUTPUT_TOKEN_SIZE
-        )
+    generation_llm = ChatOpenAI(
+        temperature=temp[temperature],
+        model_name="gpt-3.5-turbo",
+        max_tokens=1280
+    )
 
-        generated_prompt = PromptTemplate(
-            template=generation_prompt_template(
-                doc_type, tone, goal
-            ), input_variables=["context"]
-        )
+    generated_prompt = PromptTemplate(
+        template=generation_prompt_template(
+            doc_type, tone, goal
+        ), input_variables=["context"]
+    )
 
-        docs = text_to_doc(text_content)
-        if goal is not None:
-            index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
-        else:
-            index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
+    docs = text_to_doc(text_content)
+    if goal is not None:
+        index = embed_docs(docs).similarity_search(f"What best addresses this goal {goal}", k=4)
+    else:
+        index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
 
-        inputs = [
-            {"context": i.page_content}
-            for i in index
-        ]
-        gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
-        generated_report = gen_chain.apply(inputs)[0]['text'].strip()
+    inputs = [
+        {"context": i.page_content}
+        for i in index
+    ]
+    gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
+    generated_report = gen_chain.apply(inputs)[0]['text'].strip()
 
-        memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
-        conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
+    memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
+    conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
 
-        save(project_id, generated_report, [generated_report], read_memory(conv_chain))
+    save(project_id, generated_report, [generated_report], read_memory(conv_chain))
 
-        return generated_report
-    except Exception as e:
-        st.write(f"")
+    return get_title_generated_text(generated_report)
 
 
 @time_function
@@ -379,7 +383,7 @@ def init_project(json_input):
     except KeyError:
         temp = 'variable'
 
-    text = generate_text(
+    result = generate_text(
         keys['project_id'],
         content,
         keys['tone'],
@@ -388,8 +392,12 @@ def init_project(json_input):
         temperature=temp
     )
 
+    title = result['title']
+    text = result['generated_text']
+
     return dict_to_json({
         'status': 200,
+        'title': title,
         'generated_text': text,
         'issue_key_type': issue_key_type,
         'log': "Successfully generated report!!!"
