@@ -42,7 +42,8 @@ openai.api_key = OPENAI_API_KEY
 
 generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
 You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
-Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must return your result in this json format alone."  [["title", <title>], ["generated_text", <gen_text>]]
+Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must return your result in this json format alone.
+Finally, ensure your generated text never exceeds 1024 token"  [["title", <title>], ["generated_text", <gen_text>]]
 
     Context: {context}"""
 
@@ -340,6 +341,8 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
     conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
 
     save(project_id, generated_report, [generated_report], read_memory(conv_chain))
+
+    st.write(generated_report)
 
     return get_title_generated_text(generated_report)
 
