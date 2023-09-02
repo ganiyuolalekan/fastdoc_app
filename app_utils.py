@@ -342,8 +342,6 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
 
     save(project_id, generated_report, [generated_report], read_memory(conv_chain))
 
-    st.write(generated_report)
-
     return get_title_generated_text(generated_report)
 
 
