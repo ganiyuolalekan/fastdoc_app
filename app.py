@@ -65,9 +65,9 @@ if start_project:
         divider()
         title = json_to_dict(generate_text_res)['title']
         text = json_to_dict(generate_text_res)['generated_text']
-        st.write(f"TITLE: {title}")
+        st.write(f"TITLE: \n\n{title}")
         divider()
-        st.write(f"GENERATED TEXT: {text}")
+        st.write(f"GENERATED TEXT: \n\n{text}")
         divider()
 
     with st.sidebar:

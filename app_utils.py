@@ -40,7 +40,9 @@ else:
 
 openai.api_key = OPENAI_API_KEY
 
-generation_prompt_template = lambda doc_type, tone, goal=None: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}". If the provided goal in None, please make use of the information you have towards the aim of the scope/context. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed. Give you generated text a descriptive title:""" + """You must return your result in this json format alone placing only the title in "title" and only the generated report (without titles or label information) in "generated_text"  [["title", "..."], ["generated_text", '''...''']]
+generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
+You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
+Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must return your result in this json format alone."  [["title", <title>], ["generated_text", <gen_text>]]
 
     Context: {context}"""
 
@@ -286,10 +288,15 @@ def load(project_id):
 @time_function
 def get_title_generated_text(response):
     result = {'title': None, 'generated_text': None}
+    print()
 
     for i, res in enumerate(eval(response)):
         key, content = res
-        result[key] = content
+
+        if key == "generated_text":
+            result[key] = "\n\n".join([point for point in content.split('\n\n') if point.strip() != result['title'].strip()]).strip()
+        else:
+            result[key] = content
 
     return result
 
