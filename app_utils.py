@@ -42,9 +42,9 @@ openai.api_key = OPENAI_API_KEY
 
 generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
 You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
-Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must return your result in this json format alone.
-Finally, ensure your generated text never exceeds 1024 token"  [["title", <title>], ["generated_text", <gen_text>]]
+Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must return your result in the format alone. Finally, ensure your generated text never exceeds 1024 token and is quoted in triple quotes  
 
+    Format: [["title", <title>], ["generated_text", '''<gen_text>''']]
     Context: {context}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
