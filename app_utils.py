@@ -42,9 +42,9 @@ openai.api_key = OPENAI_API_KEY
 
 generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
 You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
-Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must return your result in the format alone. Finally, ensure your generated text never exceeds 1024 token and is quoted in triple quotes  
+Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must always return your result in the format specified below alone. Finally, ensure your generated text never exceeds 3072 tokens and it must be quoted in triple single quotes. All quotes and square braces MUST be closed accurately in the order they appear in the format.
 
-    Format: [["title", <title>], ["generated_text", '''<gen_text>''']]
+    Format: "[["title", '<title>'], ["generated_text", '''<gen_text>''']]"
     Context: {context}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
@@ -60,8 +60,8 @@ base_url = "https://fastdoc-jira-integration.onrender.com/"
 
 conversational_llm = ChatOpenAI(
     temperature=0.5,
-    model_name="gpt-3.5-turbo",
-    max_tokens=1280
+    model_name="gpt-3.5-turbo-16k",
+    max_tokens=5120
 )
 
 conversational_prompt = PromptTemplate(
@@ -289,7 +289,6 @@ def load(project_id):
 @time_function
 def get_title_generated_text(response):
     result = {'title': None, 'generated_text': None}
-    print()
 
     for i, res in enumerate(eval(response)):
         key, content = res
@@ -314,8 +313,8 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
 
     generation_llm = ChatOpenAI(
         temperature=temp[temperature],
-        model_name="gpt-3.5-turbo",
-        max_tokens=1280
+        model_name="gpt-3.5-turbo-16k",
+        max_tokens=5120
     )
 
     generated_prompt = PromptTemplate(
@@ -336,6 +335,8 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
     ]
     gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
     generated_report = gen_chain.apply(inputs)[0]['text'].strip()
+
+    print(generated_report)
 
     memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
     conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
