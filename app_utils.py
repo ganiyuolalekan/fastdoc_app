@@ -336,8 +336,6 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
     gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
     generated_report = gen_chain.apply(inputs)[0]['text'].strip()
 
-    print(generated_report)
-
     memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
     conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
 
