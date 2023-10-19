@@ -15,7 +15,17 @@ if start_project:
     display_generated = display_comment = display_delete = False
 
     with st.sidebar:
-        st.markdown("### 1. Input to generate text")
+        st.markdown("### 1. Upload organization information")
+        org_url = st.text_input(label="Enter your organization URL", value="https://fastdoc.io/")
+        org_query = st.text_input(label="What query would you like to ask?", value="What are the key features?")
+    #     submit_1 = st.button(label="Submit", key=1001)
+    #     divider()
+    #
+    # if submit_1:
+    #     pass
+
+    with st.sidebar:
+        st.markdown("### 2. Input to generate text")
         scope = st.text_input(label="Enter Issue key - eg FD-5", value="FD-5")
         temperature = st.selectbox(
             label="Select a temperature for the model",
@@ -54,6 +64,8 @@ if start_project:
             'doc_type': doc_type,
             'temperature': temperature,
             'project_id': 12345,
+            'url': org_url,
+            'query': org_query,
         }))
 
         if generate_text_res is not None:
@@ -71,7 +83,7 @@ if start_project:
         divider()
 
     with st.sidebar:
-        st.markdown("### 2. Comment to improve text".upper())
+        st.markdown("### 3. Comment to improve text".upper())
         comment = st.text_input(label="What would you like to change?", value="Could you make the tone more like a newsletter")
         submit_2 = st.button(label="Submit", key=11)
         divider()
@@ -92,7 +104,7 @@ if start_project:
         divider()
 
     with st.sidebar:
-        st.markdown("### 3. Delete from database".upper())
+        st.markdown("### 4. Delete from database".upper())
         delete = st.button(label="Delete", key=22)
 
     if delete:

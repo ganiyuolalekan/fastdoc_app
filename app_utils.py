@@ -10,22 +10,27 @@ import openai
 import requests
 import functools
 
+from bs4 import BeautifulSoup
+
 from dotenv import load_dotenv
 
 from typing import List
 
+from langchain.vectorstores import Chroma
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
 from langchain.chains import LLMChain, load_chain
+from langchain.document_loaders import WebBaseLoader
 from langchain.memory import ConversationBufferMemory
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains.question_answering import load_qa_chain
 from langchain.schema import messages_from_dict, messages_to_dict
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
+
 
 load_dotenv()
 
@@ -40,12 +45,13 @@ else:
 
 openai.api_key = OPENAI_API_KEY
 
-generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
+generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Use the information about the organization to fine tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
 You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
 Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must always return your result in the format specified below alone. Finally, ensure your generated text never exceeds 3072 tokens and it must be quoted in triple single quotes. All quotes and square braces MUST be closed accurately in the order they appear in the format.
 
     Format: "[["title", '<title>'], ["generated_text", '''<gen_text>''']]"
-    Context: {context}"""
+    Context: {context}
+    Organization Information: {org_info}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
 You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only.
@@ -136,6 +142,27 @@ def clean_string(input_string):
     cleaned_string = re.sub(r"\[\~accountid:[a-fA-F0-9]+\]", "", cleaned_string)
 
     return cleaned_string
+
+
+def clean_html_and_css(text):
+    # Parse the text as HTML using BeautifulSoup
+    soup = BeautifulSoup(text, 'html.parser')
+
+    # Remove all HTML tags
+    cleaned_text = soup.get_text()
+
+    return cleaned_text
+
+
+def get_relevant_doc_from_vector_db(url, query):
+    loader = WebBaseLoader(url)
+    data = loader.load()
+    fast_doc_content = clean_html_and_css(data[0].page_content)
+    docs = text_to_doc(fast_doc_content, 1600)
+    docsearch = Chroma.from_documents(docs, OpenAIEmbeddings())
+    relevant_docs = docsearch.max_marginal_relevance_search(query, k=1)
+
+    return relevant_docs[0].page_content.strip()
 
 
 @time_function
@@ -302,7 +329,7 @@ def get_title_generated_text(response):
 
 
 @time_function
-def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
+def generate_text(project_id, text_content, tone, doc_type, url, query, goal=None, temperature='variable'):
     """Function to generate report"""
 
     temp = {
@@ -320,7 +347,7 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
     generated_prompt = PromptTemplate(
         template=generation_prompt_template(
             doc_type, tone, goal
-        ), input_variables=["context"]
+        ), input_variables=["context", "org_info"]
     )
 
     docs = text_to_doc(text_content)
@@ -330,7 +357,10 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
         index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
 
     inputs = [
-        {"context": i.page_content}
+        {
+            "context": i.page_content,
+            "org_info": get_relevant_doc_from_vector_db(url, query)
+        }
         for i in index
     ]
     gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
@@ -395,6 +425,8 @@ def init_project(json_input):
         content,
         keys['tone'],
         keys['doc_type'],
+        keys['url'],
+        keys['query'],
         keys['goal'],
         temperature=temp
     )
