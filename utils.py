@@ -6,9 +6,11 @@ import openai
 import sqlite3
 import requests
 
+from typing import List
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-from typing import List
+from vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
 
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
@@ -16,6 +18,7 @@ from langchain.vectorstores import VectorStore
 from langchain.vectorstores.faiss import FAISS
 from langchain.docstore.document import Document
 from langchain.chains import LLMChain, load_chain
+from langchain.document_loaders import WebBaseLoader
 from langchain.memory import ConversationBufferMemory
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains.question_answering import load_qa_chain
@@ -27,13 +30,13 @@ load_dotenv()
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-INPUT_TOKEN_SIZE = 1000
-OUTPUT_TOKEN_SIZE = 1000
+generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Use the information about the organization to fine tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
+You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
+Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must always return your result in the format specified below alone. Finally, ensure your generated text never exceeds 3072 tokens and it must be quoted in triple single quotes. All quotes and square braces MUST be closed accurately in the order they appear in the format.
 
-generation_prompt_template = lambda doc_type, tone, goal=None: f"""Use the context below to write/compose a {doc_type} write-up. Ensure your generated text is in a format that matches the defined {doc_type} formats, also use the tone {tone} in your generated output, writing to address the goal of the writer which is "{goal}". If the provided goal in None, please make use of the information you have towards the aim of the scope/context. Use the context below to gain scope/context on your write-up but you do not have to copy texts from the context only when necessary, with your generated text being nothing like the context passed:""" + """
-
+    Format: "[["title", '<title>'], ["generated_text", '''<gen_text>''']]"
     Context: {context}
-    Generated Text: """
+    Organization Information: {org_info}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
 You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only.
@@ -48,8 +51,8 @@ base_url = "https://fastdoc-jira-integration.onrender.com/"
 
 conversational_llm = ChatOpenAI(
     temperature=0.5,
-    model_name="gpt-3.5-turbo",
-    max_tokens=2048
+    model_name="gpt-3.5-turbo-16k",
+    max_tokens=5120
 )
 
 conversational_prompt = PromptTemplate(
@@ -137,6 +140,42 @@ def clean_string(input_string):
     return cleaned_string
 
 
+def clean_html_and_css(text):
+    # Parse the text as HTML using BeautifulSoup
+    soup = BeautifulSoup(text, 'html.parser')
+
+    # Remove all HTML tags
+    cleaned_text = soup.get_text()
+
+    return cleaned_text
+
+
+def get_relevant_doc_from_vector_db(url, query, org="fastdoc", _id=None, metadata=None):
+    loader = WebBaseLoader(url)
+    data = loader.load()
+    content = clean_html_and_css(data[0].page_content)
+
+    create_organization(org)
+
+    if _id is None:
+        _id = '12345'
+    if metadata is None:
+        metadata = {}
+
+    data = {
+        'org': org,
+        'ids': ['12345'],
+        'contents': [content],
+        'metadatas': [metadata]
+    }
+
+    add_data_to_vector_db(data)
+    docsearch = get_vectorstore(org)
+    relevant_docs = docsearch.max_marginal_relevance_search(query, k=1)
+
+    return relevant_docs[0].page_content.strip()
+
+
 def get_issues(issue_key):
     url = base_url + f'issues/{issue_key}'
 
@@ -164,7 +203,7 @@ def write_out_report(issue_key):
     for _fields in issues:
         fields = _fields['fields']
         try:
-            ticket_type = fields['parent']['fields']['status']['name']
+            ticket_type = fields['fields']['status']['name']
         except KeyError:
             ticket_type = fields['status']['name']
 
@@ -276,7 +315,21 @@ def load(project_id):
         })
 
 
-def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
+def get_title_generated_text(response):
+    result = {'title': None, 'generated_text': None}
+
+    for i, res in enumerate(eval(response)):
+        key, content = res
+
+        if key == "generated_text":
+            result[key] = "\n\n".join([point for point in content.split('\n\n') if point.strip() != result['title'].strip()]).strip()
+        else:
+            result[key] = content
+
+    return result
+
+
+def generate_text(project_id, text_content, tone, doc_type, url, query, goal=None, temperature='variable'):
     """Function to generate report"""
 
     temp = {
@@ -287,14 +340,14 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
 
     generation_llm = ChatOpenAI(
         temperature=temp[temperature],
-        model_name="gpt-3.5-turbo",
-        max_tokens=OUTPUT_TOKEN_SIZE
+        model_name="gpt-3.5-turbo-16k",
+        max_tokens=5120
     )
 
     generated_prompt = PromptTemplate(
         template=generation_prompt_template(
             doc_type, tone, goal
-        ), input_variables=["context"]
+        ), input_variables=["context", "org_info"]
     )
 
     docs = text_to_doc(text_content)
@@ -304,7 +357,10 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
         index = embed_docs(docs).similarity_search("What are the most relevant documents here", k=4)
 
     inputs = [
-        {"context": i.page_content}
+        {
+            "context": i.page_content,
+            "org_info": get_relevant_doc_from_vector_db(url, query)
+        }
         for i in index
     ]
     gen_chain = LLMChain(llm=generation_llm, prompt=generated_prompt)
@@ -315,7 +371,7 @@ def generate_text(project_id, text_content, tone, doc_type, goal=None, temperatu
 
     save(project_id, generated_report, [generated_report], read_memory(conv_chain))
 
-    return generated_report
+    return get_title_generated_text(generated_report)
 
 
 def regenerate_report(project_id, human_input):
@@ -348,60 +404,84 @@ def init_project(json_input):
     Initializes a new project and creates in id for it in our local database
     """
 
-    keys = json_to_dict(json_input)
-
-    content, issue_key_type = write_out_report(keys['scope'])
-
     try:
-        temp = keys['temperature']
-    except KeyError:
-        temp = 'variable'
+        keys = json_to_dict(json_input)
 
-    text = generate_text(
-        keys['project_id'],
-        content[: INPUT_TOKEN_SIZE],
-        keys['tone'],
-        keys['doc_type'],
-        keys['goal'],
-        temperature=temp
-    )
+        content, issue_key_type = write_out_report(keys['scope'])
 
-    return dict_to_json({
-        'status': 200,
-        'generated_text': text,
-        'issue_key_type': issue_key_type,
-        'log': "Successfully generated report!!!"
-    })
+        try:
+            temp = keys['temperature']
+        except KeyError:
+            temp = 'variable'
+
+        result = generate_text(
+            keys['project_id'],
+            content,
+            keys['tone'],
+            keys['doc_type'],
+            keys['url'],
+            keys['query'],
+            keys['goal'],
+            temperature=temp
+        )
+
+        title = result['title']
+        text = result['generated_text']
+
+        return dict_to_json({
+            'status': 200,
+            'title': title,
+            'generated_text': text,
+            'issue_key_type': issue_key_type,
+            'log': "Successfully generated report!!!"
+        })
+    except Exception as e:
+        return dict_to_json({
+            'status': 503,
+            'log': f"Program failed with exception {e}"
+        })
 
 
 def return_project_value(json_input):
     """Responsible for continuous query for a particular database"""
 
-    keys = json_to_dict(json_input)
+    try:
+        keys = json_to_dict(json_input)
 
-    re_gen_report = regenerate_report(
-        keys['project_id'],
-        keys['user_query']
-    )
+        re_gen_report = regenerate_report(
+            keys['project_id'],
+            keys['user_query']
+        )
 
-    if type(re_gen_report) == str:
+        if type(re_gen_report) == str:
+            return dict_to_json({
+                're-generated_text': re_gen_report,
+                'status': 200,
+                'log': "Successfully re-generated report!!!"
+            })
+        else:
+            return re_gen_report
+    except Exception as e:
         return dict_to_json({
-            're-generated_text': re_gen_report,
-            'status': 200,
-            'log': "Successfully re-generated report!!!"
+            'status': 503,
+            'log': f"Program failed with exception {e}"
         })
-    else:
-        return re_gen_report
 
 
 def delete_project(json_input):
     """Responsible for delete a project from ML database"""
 
-    keys = json_to_dict(json_input)
-    db.delete_class(keys['project_id'])
+    try:
+        keys = json_to_dict(json_input)
+        db.delete_class(keys['project_id'])
 
-    return dict_to_json({
-        'status': 200,
-        'log': "Successfully deleted projects!!!"
-    })
+        return dict_to_json({
+            'status': 200,
+            'log': "Successfully deleted projects!!!"
+        })
+    except Exception as e:
+        return dict_to_json({
+            'status': 503,
+            'log': f"Program failed with exception {e}"
+        })
 

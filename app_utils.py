@@ -9,14 +9,15 @@ import time
 import openai
 import requests
 import functools
-
-from bs4 import BeautifulSoup
-
-from dotenv import load_dotenv
+import chromadb
 
 from typing import List
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
-from langchain.vectorstores import Chroma
+from vector_db_funcs import HOST, PORT
+from vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
+
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.vectorstores import VectorStore
@@ -34,7 +35,9 @@ from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
 load_dotenv()
 
-TEST_LOCAL = False
+TEST_LOCAL = True
+
+client = chromadb.HttpClient(host=HOST, port=PORT)
 
 if TEST_LOCAL:
     # Local Development
@@ -154,12 +157,31 @@ def clean_html_and_css(text):
     return cleaned_text
 
 
-def get_relevant_doc_from_vector_db(url, query):
+def get_relevant_doc_from_vector_db(url, query, org="fastdoc", _id=None, metadata=None):
     loader = WebBaseLoader(url)
     data = loader.load()
-    fast_doc_content = clean_html_and_css(data[0].page_content)
-    docs = text_to_doc(fast_doc_content, 1600)
-    docsearch = Chroma.from_documents(docs, OpenAIEmbeddings())
+    content = clean_html_and_css(data[0].page_content)
+
+    try:
+        client.get_collection(name=org)
+    except:
+        create_organization(org)
+
+        if _id is None:
+            _id = '12345'
+        if metadata is None:
+            metadata = {}
+
+        data = {
+            'org': org,
+            'ids': ['12345'],
+            'contents': [content],
+            'metadatas': [metadata]
+        }
+
+        add_data_to_vector_db(data)
+
+    docsearch = get_vectorstore(org)
     relevant_docs = docsearch.max_marginal_relevance_search(query, k=1)
 
     return relevant_docs[0].page_content.strip()
@@ -329,7 +351,7 @@ def get_title_generated_text(response):
 
 
 @time_function
-def generate_text(project_id, text_content, tone, doc_type, url, query, goal=None, temperature='variable'):
+def generate_text(project_id, text_content, tone, doc_type, url, query, org, goal=None, temperature='variable'):
     """Function to generate report"""
 
     temp = {
@@ -359,7 +381,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, query, goal=Non
     inputs = [
         {
             "context": i.page_content,
-            "org_info": get_relevant_doc_from_vector_db(url, query)
+            "org_info": get_relevant_doc_from_vector_db(url, query, org)
         }
         for i in index
     ]
@@ -427,6 +449,7 @@ def init_project(json_input):
         keys['doc_type'],
         keys['url'],
         keys['query'],
+        keys['org_name'],
         keys['goal'],
         temperature=temp
     )

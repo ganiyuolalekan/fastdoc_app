@@ -16,13 +16,9 @@ if start_project:
 
     with st.sidebar:
         st.markdown("### 1. Upload organization information")
+        org_name = st.text_input(label="Organization Name", value="fastdoc")
         org_url = st.text_input(label="Enter your organization URL", value="https://fastdoc.io/")
         org_query = st.text_input(label="What query would you like to ask?", value="What are the key features?")
-    #     submit_1 = st.button(label="Submit", key=1001)
-    #     divider()
-    #
-    # if submit_1:
-    #     pass
 
     with st.sidebar:
         st.markdown("### 2. Input to generate text")
@@ -66,6 +62,7 @@ if start_project:
             'project_id': 12345,
             'url': org_url,
             'query': org_query,
+            'org_name': org_name
         }))
 
         if generate_text_res is not None:
