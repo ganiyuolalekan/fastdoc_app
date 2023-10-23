@@ -48,7 +48,7 @@ else:
 
 openai.api_key = OPENAI_API_KEY
 
-generation_prompt_template = lambda doc_type, tone, goal="None": f"""Understand and study the context below, and use it to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure your generated text is only in the notable standardised format that matches the {doc_type} format of writing. Use the information about the organization to fine tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
+generation_prompt_template = lambda doc_type, tone, goal="None": f"""You’re an AI system for text generation, as such perfectly understand and study the context below making reference to the organization information below to provide more context about the organization requesting the text generation. The context provided below should act as the major source of your write up, organization information is intended to be used to help you understand what the organization is about so you generate you text towards their intended goal. Make use of this informations to write/compose a {doc_type} write-up with a descriptive title as <title> and its content (the generated text) as <gen_text>. Ensure the text you generated is only in the notable standardised format that matches the {doc_type} format of writing. Use the information about the organization to improve your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Also, use a {tone} tone in your generated output. 
 You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
 Never copy text from the context or use it to fill points in your generated text only when necessary. Also, <title> must never appear in your <gen_text> if <gen_text> must have a title give it something entirely different from <title>.""" + """You must always return your result in the format specified below alone. Finally, ensure your generated text never exceeds 3072 tokens and it must be quoted in triple single quotes. All quotes and square braces MUST be closed accurately in the order they appear in the format.
 
@@ -157,14 +157,14 @@ def clean_html_and_css(text):
     return cleaned_text
 
 
-def get_relevant_doc_from_vector_db(url, query, org="fastdoc", _id=None, metadata=None):
-    loader = WebBaseLoader(url)
-    data = loader.load()
-    content = clean_html_and_css(data[0].page_content)
-
+def get_relevant_doc_from_vector_db(goal, url="https://fastdoc.io/", org="fastdoc", _id=None, metadata=None):
     try:
         client.get_collection(name=org)
     except:
+        loader = WebBaseLoader(url)
+        data = loader.load()
+        content = clean_html_and_css(data[0].page_content)
+
         create_organization(org)
 
         if _id is None:
@@ -182,7 +182,7 @@ def get_relevant_doc_from_vector_db(url, query, org="fastdoc", _id=None, metadat
         add_data_to_vector_db(data)
 
     docsearch = get_vectorstore(org)
-    relevant_docs = docsearch.max_marginal_relevance_search(query, k=1)
+    relevant_docs = docsearch.max_marginal_relevance_search(goal, k=1)
 
     return relevant_docs[0].page_content.strip()
 
@@ -351,7 +351,7 @@ def get_title_generated_text(response):
 
 
 @time_function
-def generate_text(project_id, text_content, tone, doc_type, url, query, org, goal=None, temperature='variable'):
+def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
     """Function to generate report"""
 
     temp = {
@@ -381,7 +381,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, query, org, goa
     inputs = [
         {
             "context": i.page_content,
-            "org_info": get_relevant_doc_from_vector_db(url, query, org)
+            "org_info": get_relevant_doc_from_vector_db(goal)
         }
         for i in index
     ]
@@ -447,9 +447,6 @@ def init_project(json_input):
         content,
         keys['tone'],
         keys['doc_type'],
-        keys['url'],
-        keys['query'],
-        keys['org_name'],
         keys['goal'],
         temperature=temp
     )
