@@ -1,3 +1,7 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 from app_utils import app_meta, divider, st
 from app_utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json, write_out_report
 
