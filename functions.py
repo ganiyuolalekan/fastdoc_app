@@ -22,18 +22,14 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
 from vector_db_funcs import HOST, PORT
-from prompts import generation_prompt_template
-from classes import ClassDatabase, GenerationModel
 from vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
-from variables import base_url, conversational_llm, conversational_prompt, generated_text_desc, SEPARATORS
+from variables import base_url, conversational_llm, conversational_prompt, SEPARATORS
 
 load_dotenv()
 
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 client = chromadb.HttpClient(host=HOST, port=PORT)
-
-db = ClassDatabase("class_database.db")
 
 
 def json_to_dict(json_str):
@@ -204,36 +200,6 @@ def read_memory(chain):
     return dict_to_json(messages_to_dict(extracted_messages))
 
 
-def save(project_id, generated_report, generated_text_tracker, conv_chain, return_json_data=False):
-    """
-    Save model chain by returning it's json value and
-    stores that into a database to be used later
-    """
-
-    result_json = dict_to_json({
-        'conv_chain': conv_chain,
-        'generated_report': generated_report,
-        'generated_text_tracker': generated_text_tracker
-    })
-
-    db.add_class(result_json, project_id)
-
-    if return_json_data:
-        return result_json
-
-
-def load(project_id):
-    """Loads a FastDoc object from a json object"""
-
-    try:
-        return json_to_dict(db.get_class(project_id))
-    except TypeError:
-        return dict_to_json({
-            'status': 403,
-            'log': "Failed to load project!!!"
-        })
-
-
 def app_meta():
     """Adds app meta data to web applications"""
 
@@ -249,70 +215,3 @@ def divider():
     """Sub-routine to create a divider for webpage contents"""
 
     st.markdown("""---""")
-
-
-def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
-    """Function to generate report"""
-
-    temp = {
-        'stable': 0.,
-        'variable': 1.,
-        'highly variable': 1.9
-    }
-
-    memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
-    conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
-
-    org_info = get_relevant_doc_from_vector_db(goal)
-
-    generation_custom_functions = [
-        {
-            'name': 'text_generation',
-            'description': generated_text_desc,
-            'parameters': GenerationModel.schema()
-        }
-    ]
-
-    response = openai.ChatCompletion.create(
-        temperature=temp[temperature],
-        model='gpt-3.5-turbo-16k',
-        max_tokens=5120,
-        messages=[{
-            'role': 'user',
-            'content': generation_prompt_template(
-                doc_type, tone, text_content, org_info, goal
-            )}],
-        functions=generation_custom_functions,
-        function_call={"name": "text_generation"}
-    )
-
-    result = json.loads(response['choices'][0]['message']['function_call']['arguments'])
-
-    save(project_id, result['generated_text'], [result['generated_text']], read_memory(conv_chain))
-
-    return result
-
-
-def regenerate_report(project_id, human_input):
-    """Regenerates the results based on the users request"""
-
-    json_data = load(project_id)
-
-    try:
-        conv_chain = write_memory(json_data['conv_chain'])
-        generated_report = json_data['generated_report']
-        generated_text_tracker = json_data['generated_text_tracker']
-
-        result = conv_chain({
-            "input_documents": convert_report(generated_report),
-            "human_input": human_input
-        }, return_only_outputs=True)
-
-        generated_report = result['output_text'].strip()
-        generated_text_tracker.append(generated_report)
-
-        save(project_id, generated_report, generated_text_tracker, read_memory(conv_chain))
-
-        return generated_report
-    except KeyError:
-        return json_data
