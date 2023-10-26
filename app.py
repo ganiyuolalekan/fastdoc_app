@@ -1,9 +1,14 @@
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+TEST_LOCAL = False
 
-from app_utils import app_meta, divider, st
-from app_utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json, write_out_report
+if not TEST_LOCAL:
+    __import__('pysqlite3')
+    import sys
+
+    sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
+import streamlit as st
+from functions import app_meta, divider
+from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
 app_meta()
 
