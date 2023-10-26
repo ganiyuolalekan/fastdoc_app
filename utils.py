@@ -45,7 +45,6 @@ def init_project(json_input):
             content,
             keys['tone'],
             keys['doc_type'],
-            url,
             goal,
             temperature=temp
         )

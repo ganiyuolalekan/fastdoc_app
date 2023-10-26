@@ -251,7 +251,7 @@ def divider():
     st.markdown("""---""")
 
 
-def generate_text(project_id, text_content, tone, doc_type, url, goal=None, temperature='variable'):
+def generate_text(project_id, text_content, tone, doc_type, goal=None, temperature='variable'):
     """Function to generate report"""
 
     temp = {
@@ -263,7 +263,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, goal=None, temp
     memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
     conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
 
-    org_info = get_relevant_doc_from_vector_db(url, goal)
+    org_info = get_relevant_doc_from_vector_db(goal)
 
     generation_custom_functions = [
         {
