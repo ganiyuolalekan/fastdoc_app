@@ -1,5 +1,4 @@
 import os
-import json
 import openai
 import streamlit as st
 
@@ -94,7 +93,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, goal=None, temp
         function_call={"name": "text_generation"}
     )
 
-    result = json.loads(response['choices'][0]['message']['function_call']['arguments'])
+    result = eval(response['choices'][0]['message']['function_call']['arguments'])
 
     save(project_id, result['generated_text'], [result['generated_text']], read_memory(conv_chain))
 
