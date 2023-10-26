@@ -62,6 +62,9 @@ def clean_html_and_css(text):
 
 
 def get_relevant_doc_from_vector_db(goal, url="https://fastdoc.io/", org="fastdoc", _id=None, metadata=None):
+    if goal is None:
+        goal = f"About FastDoc"
+
     try:
         client.get_collection(name=org)
     except:

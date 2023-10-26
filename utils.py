@@ -130,48 +130,48 @@ def init_project(json_input):
     Initializes a new project and creates in id for it in our local database
     """
 
-    # try:
-    keys = json_to_dict(json_input)
-
-    content, issue_key_type = write_out_report(keys['scope'])
-
     try:
-        temp = keys['temperature']
-    except KeyError:
-        temp = 'variable'
+        keys = json_to_dict(json_input)
 
-    try:
-        url = keys['url']
-    except KeyError:
-        url = fastdoc_url
+        content, issue_key_type = write_out_report(keys['scope'])
 
-    goal = None if keys['goal'] == "" else keys['goal']
+        try:
+            temp = keys['temperature']
+        except KeyError:
+            temp = 'variable'
 
-    result = generate_text(
-        keys['project_id'],
-        content,
-        keys['tone'],
-        keys['doc_type'],
-        url,
-        goal,
-        temperature=temp
-    )
+        try:
+            url = keys['url']
+        except KeyError:
+            url = fastdoc_url
 
-    title = result['title']
-    text = result['generated_text']
+        goal = None if keys['goal'] == "" else keys['goal']
 
-    return dict_to_json({
-        'status': 200,
-        'title': title,
-        'generated_text': text,
-        'issue_key_type': issue_key_type,
-        'log': "Successfully generated report!!!"
-    })
-    # except Exception as e:
-    #     return dict_to_json({
-    #         'status': 503,
-    #         'log': f"Program failed with exception {e}"
-    #     })
+        result = generate_text(
+            keys['project_id'],
+            content,
+            keys['tone'],
+            keys['doc_type'],
+            url,
+            goal,
+            temperature=temp
+        )
+
+        title = result['title']
+        text = result['generated_text']
+
+        return dict_to_json({
+            'status': 200,
+            'title': title,
+            'generated_text': text,
+            'issue_key_type': issue_key_type,
+            'log': "Successfully generated report!!!"
+        })
+    except Exception as e:
+        return dict_to_json({
+            'status': 503,
+            'log': f"Program failed with exception {e}"
+        })
 
 
 def return_project_value(json_input):

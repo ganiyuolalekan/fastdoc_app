@@ -1,6 +1,3 @@
-import json
-import sqlite3
-
 from pydantic import BaseModel, Field
 from variables import title_desc, generated_text_desc
 
