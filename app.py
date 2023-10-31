@@ -7,7 +7,7 @@ if not TEST_LOCAL:
     sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
-from functions import app_meta, divider
+from modules.functions import app_meta, divider
 from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
 app_meta()

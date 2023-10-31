@@ -1,8 +1,9 @@
-import os
 import openai
 import chromadb
 
 from dotenv import load_dotenv
+
+from .variables import OPENAI_API_KEY
 
 from langchain.vectorstores import Chroma
 from langchain.docstore.document import Document
@@ -11,7 +12,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 load_dotenv()
 
-openai.api_key = os.environ.get("OPENAI_API_KEY")
+openai.api_key = OPENAI_API_KEY
 
 HOST = '18.130.242.183'
 PORT = 8000

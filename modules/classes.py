@@ -1,5 +1,11 @@
+import openai
+
 from pydantic import BaseModel, Field
-from variables import title_desc, generated_text_desc
+
+from .variables import OPENAI_API_KEY
+from .variables import title_desc, generated_text_desc
+
+openai.api_key = OPENAI_API_KEY
 
 
 class GenerationModel(BaseModel):

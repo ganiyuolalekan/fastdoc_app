@@ -1,8 +1,26 @@
+import os
+import openai
+import streamlit as st
+
+from dotenv import load_dotenv
+
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 
-from prompts import conversation_prompt_template
+from .prompts import conversation_prompt_template
 
+load_dotenv()
+
+TEST_LOCAL = True
+
+if TEST_LOCAL:
+    # Local Development
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+else:
+    # Production Development
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
+openai.api_key = OPENAI_API_KEY
 
 title_desc = "Concise and meaningful title given to a generated text"
 generated_text_desc = "Generated text provided by the model"
