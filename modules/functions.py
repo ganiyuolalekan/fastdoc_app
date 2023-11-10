@@ -1,8 +1,10 @@
 import re
 import json
+import time
 import openai
 import requests
 import chromadb
+import functools
 import streamlit as st
 
 from typing import List
@@ -32,6 +34,37 @@ client = chromadb.HttpClient(host=HOST, port=PORT)
 
 db = {}
 
+IS_STREAMLIT_APP = True
+
+
+# Wrapper function to time other functions
+
+def time_function(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        if IS_STREAMLIT_APP:
+            st.markdown(f"> {func.__name__} execution time: {execution_time:.4f} seconds")
+        return result
+
+    return wrapper
+
+
+def exceptions_handler(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if IS_STREAMLIT_APP:
+                st.markdown(f"> The program failed, an error occurred in `{func.__name__}`: **{e}**. Please reach out to the developer")
+            return None
+
+    return wrapper
+
 
 def json_to_dict(json_str):
     """Converts a JSON string to a Python dictionary."""
@@ -45,6 +78,7 @@ def dict_to_json(dict_data):
     return json.dumps(dict_data)
 
 
+@time_function
 def clean_string(input_string):
     cleaned_string = re.sub(r"http\S+|www\S+|https\S+", "", input_string)
     cleaned_string = re.sub(r"\[\~accountid:[a-fA-F0-9]+\]", "", cleaned_string)
@@ -92,6 +126,7 @@ def get_relevant_doc_from_vector_db(goal, url="https://fastdoc.io/", org="fastdo
     return relevant_docs[0].page_content.strip()
 
 
+@time_function
 def get_issues(issue_key):
     url = base_url + f'issues/{issue_key}'
 
@@ -100,6 +135,7 @@ def get_issues(issue_key):
     return response.text
 
 
+@exceptions_handler
 def write_out_report(issue_key):
     issue = json_to_dict(get_issues(issue_key))
 
@@ -135,6 +171,7 @@ def write_out_report(issue_key):
     return clean_string(content.strip()), issue_key_type
 
 
+@time_function
 def text_to_doc(text, chunk_size=1600):
     """
     PRIVATE text_chunking  METHOD
@@ -161,6 +198,7 @@ def text_to_doc(text, chunk_size=1600):
     return docs
 
 
+@time_function
 def convert_report(text):
     """Converts generated text into a document"""
 
@@ -171,6 +209,7 @@ def convert_report(text):
     return [doc]
 
 
+@time_function
 def embed_docs(docs: List[Document]) -> VectorStore:
     """Embeds a list of Documents and returns a FAISS index"""
 
@@ -180,6 +219,7 @@ def embed_docs(docs: List[Document]) -> VectorStore:
     return index
 
 
+@time_function
 def write_memory(conversation):
     """Writes from a memory and create a chain for the conversational model"""
 
@@ -193,6 +233,7 @@ def write_memory(conversation):
     )
 
 
+@time_function
 def read_memory(chain):
     """Reads a memory and stores the serialized file"""
 
@@ -218,6 +259,7 @@ def divider():
     st.markdown("""---""")
 
 
+@time_function
 def save(project_id, generated_report, generated_text_tracker, conv_chain, return_json_data=False):
     """
     Save model chain by returning it's json value and
@@ -236,6 +278,7 @@ def save(project_id, generated_report, generated_text_tracker, conv_chain, retur
         return result_json
 
 
+@time_function
 def load(project_id):
     """Loads a FastDoc object from a json object"""
 
@@ -248,6 +291,7 @@ def load(project_id):
         })
 
 
+@time_function
 def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable'):
     """Function to generate report"""
 
@@ -270,6 +314,16 @@ def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None,
         }
     ]
 
+    if IS_STREAMLIT_APP:
+        st.markdown("## Here's the EPIC pulled from JIRA")
+        divider()
+        st.write(text_content)
+        divider()
+        st.markdown("## Here's the Organization information extracted (strictly fastdoc)")
+        divider()
+        st.write(org_info)
+        divider()
+
     response = openai.ChatCompletion.create(
         temperature=temp[temperature],
         model='gpt-3.5-turbo-16k',
@@ -290,6 +344,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None,
     return result
 
 
+@time_function
 def regenerate_report(project_id, human_input):
     """Regenerates the results based on the users request"""
 

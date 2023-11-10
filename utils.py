@@ -1,9 +1,10 @@
 from modules.variables import fastdoc_url
 from modules.functions import (
-    dict_to_json, generate_text, regenerate_report, json_to_dict, write_out_report
+    dict_to_json, exceptions_handler, generate_text, regenerate_report, json_to_dict, write_out_report
 )
 
 
+@exceptions_handler
 def init_project(json_input):
     """
     Initializes a new project and creates in id for it in our local database
@@ -59,6 +60,7 @@ def init_project(json_input):
         })
 
 
+@exceptions_handler
 def return_project_value(json_input):
     """Responsible for continuous query for a particular database"""
 
