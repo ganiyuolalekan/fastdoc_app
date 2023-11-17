@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import time
@@ -9,6 +10,7 @@ import streamlit as st
 
 from typing import List
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.faiss import FAISS
@@ -27,6 +29,11 @@ from .prompts import generation_prompt_template
 from .variables import OPENAI_API_KEY, SEPARATORS
 from .vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
 from .variables import base_url, conversational_llm, conversational_prompt, generated_text_desc
+
+import boto3
+from botocore.exceptions import NoCredentialsError, EndpointConnectionError, ClientError
+
+load_dotenv()
 
 openai.api_key = OPENAI_API_KEY
 
@@ -368,3 +375,38 @@ def regenerate_report(project_id, human_input):
         return generated_report
     except KeyError:
         return json_data
+
+
+@time_function
+def write_to_s3(data, s3_file_name, bucket_name="fastdoc"):
+    """
+    Write data to a file in an AWS S3 bucket.
+
+    :param bucket_name: str
+        Name of the S3 bucket
+    :param s3_file_name: str
+        The name that the file should have in the S3 bucket
+    :param data: str
+        The data to be written to the file
+
+    :return: str
+        Success message if data was written, else an error message
+    """
+
+    # Create an S3 client from your session
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.getenv("AWS_DEFAULT_REGION")
+    )
+
+    try:
+        # Encode the string data to bytes
+        data_bytes = data.encode('utf-8')
+        s3.put_object(Body=data_bytes, Bucket=bucket_name, Key=s3_file_name)
+    except NoCredentialsError:
+        return "Credentials not available"
+    except (EndpointConnectionError, ClientError) as e:
+        return f"Error: {str(e)}"
+

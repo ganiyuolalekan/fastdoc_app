@@ -14,7 +14,7 @@ load_dotenv()
 
 openai.api_key = OPENAI_API_KEY
 
-HOST = '18.130.242.183'
+HOST = "35.86.173.4"
 PORT = 8000
 
 client = chromadb.HttpClient(host=HOST, port=PORT)
