@@ -10,13 +10,14 @@ focused_prompts = {
 }
 
 generation_prompt_template = lambda doc_type, tone, context, org_info, goal=None: f"""{focused_prompts[doc_type]}
-Make use of this informations to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Ensure the text you generated is only in the notable standardised format that matches the {doc_type} format of writing. Use the information about the organization to improve/fine-tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up. Never copy text from the context or use it to fill points in your generated text only when necessary. Finally, ensure your generated text never exceeds 3072 tokens.
+Make use of this informations to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Ensure the text you generated is only in the notable standardised format that matches the {doc_type} format of writing. Use the information about the organization to improve/fine-tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
+ Always ensure your generated text follows a markdown syntax. Never copy text from the context or use it to fill points in your generated text only when necessary. Finally, ensure your generated text never exceeds 3072 tokens.
 
 CONTEXT: {context}
 ORGANIZATION INFORMATION: {org_info}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
-You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only.
+You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only. Always ensure your generated text follows a markdown syntax.
 
 {context}
 
