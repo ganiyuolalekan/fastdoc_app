@@ -405,6 +405,7 @@ def write_to_s3(data, s3_file_name, bucket_name="fastdoc"):
         # Encode the string data to bytes
         data_bytes = data.encode('utf-8')
         s3.put_object(Body=data_bytes, Bucket=bucket_name, Key=s3_file_name)
+        return "Successfully wrote to S3"
     except NoCredentialsError:
         return "Credentials not available"
     except (EndpointConnectionError, ClientError) as e:
