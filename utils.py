@@ -1,4 +1,4 @@
-import streamlit
+import streamlit as st
 
 from modules.variables import fastdoc_url
 from modules.functions import (
@@ -14,8 +14,10 @@ def init_project(json_input):
 
     try:
         keys = json_to_dict(json_input)
-
-        content, issue_key_type = write_out_report(keys['scope'])
+        
+        scopes = [scope.strip() for scope in keys['scope'].split(',')]
+        
+        content = "\n\n".join([f"\n{'-'*50}\n".join([scope, write_out_report(scope)[0]]) for scope in scopes])
 
         try:
             temp = keys['temperature']
@@ -42,19 +44,19 @@ def init_project(json_input):
             url,
             org,
             goal,
-            temperature=temp
+            temperature=temp,
+            template=keys['template']
         )
 
         title = result['title']
         text = result['generated_text']
 
-        streamlit.write(write_to_s3(dict_to_json(result), f"{org}/{keys['doc_type']}/{title}.json"))
+        # st.write(write_to_s3(dict_to_json(result), f"{org}/{keys['doc_type']}/{title}.json"))
 
         return dict_to_json({
             'status': 200,
             'title': title,
             'generated_text': text,
-            'issue_key_type': issue_key_type,
             'log': "Successfully generated report!!!"
         })
     except Exception as e:

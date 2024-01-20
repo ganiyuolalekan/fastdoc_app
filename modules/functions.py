@@ -23,6 +23,7 @@ from langchain.schema import messages_from_dict, messages_to_dict
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
+from .templates import TECHNICAL_DOCUMENT
 from .classes import GenerationModel
 from .vector_db_funcs import HOST, PORT
 from .prompts import generation_prompt_template
@@ -91,6 +92,38 @@ def clean_string(input_string):
     cleaned_string = re.sub(r"\[\~accountid:[a-fA-F0-9]+\]", "", cleaned_string)
 
     return cleaned_string
+
+
+def read_value(data):
+    result = ""
+    def text_reader(contents):
+        text = ""
+        
+        for content in contents['content']:
+            if content['type'] == 'text':
+                text += content['text'] + "\n"
+
+        if text != "":
+            return text
+    
+    for content in data['content']:
+        if content['type'] in ['paragraph']:
+            text = text_reader(content)
+            if text is not None:
+                result += text
+        elif content['type'] in ['bulletList']:
+            for _content in content['content']:
+                if _content['type'] in ['paragraph']:
+                    text = text_reader(_content)
+                    if text is not None:
+                        result += text
+                elif _content['type'] in ['listItem']:
+                    for __content in _content['content']:
+                        if __content['type'] in ['paragraph']:
+                            text = text_reader(__content)
+                            if text is not None:
+                                result += text
+    return result
 
 
 def clean_html_and_css(text):
@@ -167,13 +200,17 @@ def write_out_report(issue_key):
             ticket_type = fields['status']['name']
 
         if not withdraw_pattern.match(ticket_type):
-            content += f"Summary:\n\n{fields['summary']}\n\n"
-            content += f"Description:\n\n{fields['description']}\n\n"
+            content += f"\nSummary:\n\n{fields['summary']}\n\n"
+            desc = fields['description']
+            if desc is not None:
+                content += f"Description:\n\n{read_value(desc)}\n\n"
 
             comments = fields['comment']['comments']
             content += "Comments:\n\n"
             for comment in comments:
-                content += f"{comment['body']}\n"
+                comm = comment['body']
+                if comm is not None:
+                    content += f"{read_value(comment['body'])}\n"
 
     return clean_string(content.strip()), issue_key_type
 
@@ -299,7 +336,7 @@ def load(project_id):
 
 
 @time_function
-def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable'):
+def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable', template=TECHNICAL_DOCUMENT):
     """Function to generate report"""
 
     temp = {
@@ -338,7 +375,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None,
         messages=[{
             'role': 'user',
             'content': generation_prompt_template(
-                doc_type, tone, text_content, org_info, goal
+                doc_type, tone, text_content, org_info, template, goal
             )}],
         functions=generation_custom_functions,
         function_call={"name": "text_generation"}

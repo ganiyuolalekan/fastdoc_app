@@ -8,6 +8,7 @@ if not TEST_LOCAL:
 
 import streamlit as st
 from modules.functions import app_meta, divider
+from modules.templates import TECHNICAL_DOCUMENT
 from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
 app_meta()
@@ -22,10 +23,20 @@ with st.sidebar:
 
 if start_project:
     display_generated = display_comment = display_delete = False
+    
+    with st.expander("Define Template"):
+        template = st.text_area(
+            label="Define a template for the model",
+            value=TECHNICAL_DOCUMENT,
+            height=600
+        )
 
     with st.sidebar:
         st.markdown("### 1. Input to generate text")
-        scope = st.text_input(label="Enter Issue key - eg FD-5", value="FD-5")
+        scope = st.text_input(
+            label="Enter Issue key - eg FD-5, FD-12", value="FD-5",
+            help="You can enter multiple issue keys, separate them by commas (,)"
+        )
         temperature = st.selectbox(
             label="Select a temperature for the model",
             options=['stable', 'variable', 'highly variable'], index=1
@@ -63,6 +74,7 @@ if start_project:
             'doc_type': doc_type,
             'temperature': temperature,
             'project_id': 12345,
+            'template': template
         }))
 
         if generate_text_res is not None:
