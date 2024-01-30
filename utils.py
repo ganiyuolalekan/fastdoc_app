@@ -6,7 +6,7 @@ from modules.functions import (
 )
 
 
-@exceptions_handler
+# @exceptions_handler
 def init_project(json_input):
     """
     Initializes a new project and creates in id for it in our local database
