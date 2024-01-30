@@ -21,6 +21,13 @@ TEMPLATE: {template}
 CONTEXT: {context}
 ORGANIZATION INFORMATION: {org_info}"""
 
+template_generation_prompt = lambda document, example_template=TECHNICAL_DOCUMENT: f"""Given the document below, you're expected to understand and extract the template used in this document. A template is simply the headings and sub-headings - with their purpose - that can form the skeletal structure of any newly formed document. Take a look at the example template below.
+
+NOTE: For your template headings and sub-headings, please ensure you ignore the topics of the headings and sub-headings from the document, only get the general idea of the heading, for example, "Overview of System Authentication" should be interpreted as "Overview" in your template, "Benefits of MFA Implementation" should be interpreted as "Benefits" in your template and so on.
+
+DOCUMENT: {document}
+EXAMPLE TEMPLATE: {example_template}"""
+
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
 You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only. Always ensure your generated text follows a markdown syntax.
 

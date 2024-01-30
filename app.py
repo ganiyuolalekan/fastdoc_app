@@ -7,7 +7,7 @@ if not TEST_LOCAL:
     sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
-from modules.functions import app_meta, divider
+from modules.functions import app_meta, divider, read_file_content, template_api_call, summarise_document
 from modules.templates import TECHNICAL_DOCUMENT
 from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
@@ -24,10 +24,22 @@ with st.sidebar:
 if start_project:
     display_generated = display_comment = display_delete = False
     
+    template = TECHNICAL_DOCUMENT
+    
+    st.markdown("##### Upload a document to extract it's template - ⭐️EXPERIMENTAL")
+    file_extract = st.file_uploader("Upload Document", type=["pdf", "txt", "md"])
+    
+    if file_extract is not None:
+        use_file = st.checkbox("Use file as template", value=True)
+        
+        if use_file:
+            processed_template = template_api_call(summarise_document(str(read_file_content(file_extract))))
+            template = processed_template
+        
     with st.expander("Define Template"):
         template = st.text_area(
             label="Define a template for the model",
-            value=TECHNICAL_DOCUMENT,
+            value=template,
             height=600
         )
 

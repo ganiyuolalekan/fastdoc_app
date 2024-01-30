@@ -8,6 +8,16 @@ import chromadb
 import functools
 import streamlit as st
 
+import PyPDF2
+from docx import Document
+import markdown2
+
+import nltk
+from nltk.corpus import stopwords
+from nltk.cluster.util import cosine_distance
+import numpy as np
+import networkx as nx
+
 from typing import List
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -26,8 +36,8 @@ from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 from .templates import TECHNICAL_DOCUMENT
 from .classes import GenerationModel
 from .vector_db_funcs import HOST, PORT
-from .prompts import generation_prompt_template
 from .variables import OPENAI_API_KEY, SEPARATORS
+from .prompts import generation_prompt_template, template_generation_prompt
 from .vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
 from .variables import base_url, conversational_llm, conversational_prompt, generated_text_desc
 
@@ -448,3 +458,142 @@ def write_to_s3(data, s3_file_name, bucket_name="fastdoc"):
     except (EndpointConnectionError, ClientError) as e:
         return f"Error: {str(e)}"
 
+
+def read_file_content(file):
+    content = ""
+
+    file_extension = file.name.split(".")[-1].lower()
+
+    if file_extension == "pdf":
+        content = read_pdf(file)
+    # elif file_extension == "docx":
+    #     content = read_docx(file)
+    elif file_extension == "txt":
+        content = read_text(file)
+    elif file_extension == "md":
+        content = read_text(file)
+    else:
+        st.error(f"Unsupported file format: {file_extension}")
+
+    return content
+
+def read_pdf(file):
+    pdf_reader = PyPDF2.PdfReader(file)
+    num_pages = len(pdf_reader.pages)
+    content = ""
+    for page_num in range(num_pages):
+        page = pdf_reader.pages[page_num]
+        content += page.extract_text()
+    return content
+
+def read_docx(file):
+    doc = Document(file)
+    content = ""
+    for paragraph in doc.paragraphs:
+        content += paragraph.text + "\n"
+    return content
+
+def read_text(file):
+    return file.read().decode('utf-8')
+
+def read_markdown(file):
+    content = file.read()
+    html_content = markdown2.markdown(content)
+    return html_content
+
+
+### Summarization Functions
+
+def read_and_preprocess_text(text):
+    sentences = nltk.sent_tokenize(text)
+    stop_words = set(stopwords.words("english"))
+
+    clean_sentences = []
+    for sentence in sentences:
+        words = nltk.word_tokenize(sentence)
+        words = [word.lower() for word in words if word.isalnum() and word.lower() not in stop_words]
+        clean_sentences.append(" ".join(words))
+
+    return sentences, clean_sentences
+
+
+def build_similarity_matrix(sentences):
+    similarity_matrix = np.zeros((len(sentences), len(sentences)))
+
+    for i in range(len(sentences)):
+        for j in range(len(sentences)):
+            if i != j:
+                similarity_matrix[i][j] = sentence_similarity(sentences[i], sentences[j])
+
+    return similarity_matrix
+
+
+def sentence_similarity(sent1, sent2):
+    vector1 = [word.lower() for word in sent1.split()]
+    vector2 = [word.lower() for word in sent2.split()]
+
+    all_words = list(set(vector1 + vector2))
+
+    vector1_count = [0] * len(all_words)
+    vector2_count = [0] * len(all_words)
+
+    for word in vector1:
+        if word in all_words:
+            vector1_count[all_words.index(word)] += 1
+
+    for word in vector2:
+        if word in all_words:
+            vector2_count[all_words.index(word)] += 1
+
+    return 1 - cosine_distance(vector1_count, vector2_count)
+
+
+def generate_summary(text, num_sentences=2, max_iter=200):
+    sentences, clean_sentences = read_and_preprocess_text(text)
+    similarity_matrix = build_similarity_matrix(clean_sentences)
+
+    graph = nx.from_numpy_array(similarity_matrix)
+    scores = nx.pagerank(graph, max_iter=max_iter)
+
+    ranked_sentences = sorted(((scores[i], sentence) for i, sentence in enumerate(sentences)), reverse=True)
+
+    summary = " ".join([sentence for _, sentence in ranked_sentences[:num_sentences]])
+
+    return summary
+
+
+@time_function
+def summarise_document(document, summarization_count=15, paragraph_max_split=2, max_sentence_count=2):
+    docs = document.split("\n\n")
+    summarised_docs = []
+
+    for doc in docs:
+        if len(doc.split(' ')) > summarization_count:
+            doc  = '.'.join([
+                s.strip() 
+                for s in doc.split('.') 
+                if len(s) > paragraph_max_split
+            ]).strip()
+            doc = generate_summary(doc, 1)
+            doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
+
+        summarised_docs.append(doc)
+
+    return "\n\n".join(summarised_docs)
+
+
+### LLM to extract templates from document
+
+@time_function
+def template_api_call(document, temp=1.):
+    response = openai.ChatCompletion.create(
+        temperature=temp,
+        model='gpt-3.5-turbo-16k',
+        max_tokens=1024,
+        messages=[{
+            'role': 'user',
+            'content': template_generation_prompt(document)
+        }]
+    )
+
+    return response['choices'][0]['message']['content']

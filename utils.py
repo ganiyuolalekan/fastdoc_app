@@ -12,58 +12,58 @@ def init_project(json_input):
     Initializes a new project and creates in id for it in our local database
     """
 
+    # try:
+    keys = json_to_dict(json_input)
+    
+    scopes = [scope.strip() for scope in keys['scope'].split(',')]
+    
+    content = "\n\n".join([f"\n{'-'*50}\n".join([scope, write_out_report(scope)[0]]) for scope in scopes])
+
     try:
-        keys = json_to_dict(json_input)
-        
-        scopes = [scope.strip() for scope in keys['scope'].split(',')]
-        
-        content = "\n\n".join([f"\n{'-'*50}\n".join([scope, write_out_report(scope)[0]]) for scope in scopes])
+        temp = keys['temperature']
+    except KeyError:
+        temp = 'variable'
 
-        try:
-            temp = keys['temperature']
-        except KeyError:
-            temp = 'variable'
+    try:
+        url = keys['url']
+    except KeyError:
+        url = fastdoc_url
 
-        try:
-            url = keys['url']
-        except KeyError:
-            url = fastdoc_url
+    try:
+        org = keys['org']
+    except KeyError:
+        org = "fastdoc"
 
-        try:
-            org = keys['org']
-        except KeyError:
-            org = "fastdoc"
+    goal = None if keys['goal'] == "" else keys['goal']
 
-        goal = None if keys['goal'] == "" else keys['goal']
+    result = generate_text(
+        keys['project_id'],
+        content,
+        keys['tone'],
+        keys['doc_type'],
+        url,
+        org,
+        goal,
+        temperature=temp,
+        template=keys['template']
+    )
 
-        result = generate_text(
-            keys['project_id'],
-            content,
-            keys['tone'],
-            keys['doc_type'],
-            url,
-            org,
-            goal,
-            temperature=temp,
-            template=keys['template']
-        )
+    title = result['title']
+    text = result['generated_text']
 
-        title = result['title']
-        text = result['generated_text']
+    # st.write(write_to_s3(dict_to_json(result), f"{org}/{keys['doc_type']}/{title}.json"))
 
-        # st.write(write_to_s3(dict_to_json(result), f"{org}/{keys['doc_type']}/{title}.json"))
-
-        return dict_to_json({
-            'status': 200,
-            'title': title,
-            'generated_text': text,
-            'log': "Successfully generated report!!!"
-        })
-    except Exception as e:
-        return dict_to_json({
-            'status': 503,
-            'log': f"Program failed with exception {e}"
-        })
+    return dict_to_json({
+        'status': 200,
+        'title': title,
+        'generated_text': text,
+        'log': "Successfully generated report!!!"
+    })
+    # except Exception as e:
+    #     return dict_to_json({
+    #         'status': 503,
+    #         'log': f"Program failed with exception {e}"
+    #     })
 
 
 @exceptions_handler
