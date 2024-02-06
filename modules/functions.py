@@ -171,9 +171,12 @@ def get_relevant_doc_from_vector_db(goal, url="https://fastdoc.io/", org="fastdo
         add_data_to_vector_db(data)
 
     docsearch = get_vectorstore(org)
-    relevant_docs = docsearch.max_marginal_relevance_search(goal, k=1)
-
-    return relevant_docs[0].page_content.strip()
+    relevant_docs = docsearch.similarity_search_with_relevance_scores(goal, k=1)
+    
+    doc_obj, score = relevant_docs[0]
+    
+    if score >= 0.6:
+        return doc_obj.page_content.strip()
 
 
 @time_function
