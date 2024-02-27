@@ -1,8 +1,12 @@
+import asyncio
+
 import streamlit as st
 
 from modules.variables import fastdoc_url
 from modules.functions import (
-    dict_to_json, exceptions_handler, generate_text, regenerate_report, write_to_s3, json_to_dict, write_out_report
+    dict_to_json, exceptions_handler, generate_text, 
+    regenerate_report, write_to_s3, json_to_dict, 
+    write_out_report, generate_text_section_based
 )
 
 
@@ -36,7 +40,7 @@ def init_project(json_input):
 
     goal = None if keys['goal'] == "" else keys['goal']
 
-    result = generate_text(
+    result = asyncio.run(generate_text_section_based(
         keys['project_id'],
         content,
         keys['tone'],
@@ -46,7 +50,7 @@ def init_project(json_input):
         goal,
         temperature=temp,
         template=keys['template']
-    )
+    ))
 
     title = result['title']
     text = result['generated_text']

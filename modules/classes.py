@@ -13,3 +13,9 @@ class GenerationModel(BaseModel):
 
     title: str = Field(..., description=title_desc)
     generated_text: str = Field(..., description=generated_text_desc)
+
+ 
+class Topic(BaseModel):
+    """Topic model"""
+
+    topic: str = Field(..., description="Topic for the content to be generated")

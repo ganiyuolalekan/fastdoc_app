@@ -36,3 +36,19 @@ You're not to add any comment of affrimation to you text, just answer the questi
 {chat_history}
 Human: {human_input}
 Chatbot:"""
+
+section_prompt = lambda context, tone, goal, title, generation_type: f"""You're writing a specific portion (section) of a document, the section is titled {title}. Thus, compose a 150 - 200 word write-up using a {tone} tone on the title "{title}". You're generating this section as part of an organization {generation_type}, and you're to write this section towards this goal {goal}. Your write-up should work entirely from the context provided below.
+
+Note: Please go straight to the point and write out the content, do not begin with the title or topic, and you can buttress on you points with paragraphs.
+
+Context
+-------
+{context}"""
+
+topic_prompt = lambda context, generation_type: f"""Given the content below, you're to come up with a distinguished topic title that best describes the content and can be used for a {generation_type}.
+
+Note: your topics should be concise and direct.
+
+Content
+-------
+{context}"""

@@ -3,6 +3,7 @@ import re
 import json
 import time
 import openai
+import asyncio
 import requests
 import chromadb
 import functools
@@ -11,6 +12,8 @@ import streamlit as st
 import PyPDF2
 from docx import Document
 import markdown2
+
+from openai import AsyncOpenAI
 
 import nltk
 from nltk.corpus import stopwords
@@ -34,10 +37,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
 from .templates import TECHNICAL_DOCUMENT
-from .classes import GenerationModel
+from .classes import GenerationModel, Topic
 from .vector_db_funcs import HOST, PORT
 from .variables import OPENAI_API_KEY, SEPARATORS
-from .prompts import generation_prompt_template, template_generation_prompt
+from .prompts import generation_prompt_template, template_generation_prompt, section_prompt, topic_prompt
 from .vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
 from .variables import base_url, conversational_llm, conversational_prompt, generated_text_desc
 
@@ -45,6 +48,8 @@ import boto3
 from botocore.exceptions import NoCredentialsError, EndpointConnectionError, ClientError
 
 load_dotenv()
+
+openai_client = AsyncOpenAI()
 
 openai.api_key = OPENAI_API_KEY
 
@@ -383,8 +388,8 @@ def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None,
 
     response = openai.ChatCompletion.create(
         temperature=temp[temperature],
-        model='gpt-3.5-turbo-16k',
-        max_tokens=5120,
+        model='gpt-4-1106-preview',
+        max_tokens=4096,
         messages=[{
             'role': 'user',
             'content': generation_prompt_template(
@@ -585,13 +590,163 @@ def summarise_document(document, summarization_count=15, paragraph_max_split=2, 
     return "\n\n".join(summarised_docs)
 
 
+### Function for the section based approach
+
+def remove_instructions(template):
+    """Removes the instructions from a given template"""
+
+    result = [
+        outline
+        for outline in template.split("\n")
+        if not (outline.startswith('[') or outline == "")
+    ]
+
+    return "\n".join(result)
+
+
+def search_docs(index: VectorStore, query: str) -> List[Document]:
+    """
+    Searches a FAISS index for similar chunks to the query
+    and returns a list of Documents.
+    """
+
+    if index is not None:
+        return index.similarity_search(query, k=7)
+    else:
+        pass
+
+
+async def relevant_doc(embeddings, search_term):
+    """Searches for the best result to place in the section generation"""
+    
+    return search_docs(embeddings, search_term)[0].page_content
+
+
+def get_section_title(outlines):
+    instructions = []
+    outline_dict = {}
+    for outline in outlines.split("\n")[1:]:
+        if outline != '':
+            if outline.startswith('['):
+                instructions.append(outline[1:-1])
+            else:
+                outline_dict[outline] = outline.replace('#', '').strip()
+
+    return outline_dict, instructions
+
+
+async def section_text_generation_chat_completion(context, tone, goal, title, generation_type, temp):
+    """Content generation"""
+
+    response = await openai_client.chat.completions.create(
+        temperature=temp,
+        model='gpt-4-1106-preview',
+        max_tokens=1500,
+        messages=[{'role': 'user', 'content': section_prompt(context, tone, goal, title, generation_type)}]
+    )
+    
+    return response
+
+def evaluate_response_content(response):
+    """Processes the asynchronous response"""
+    
+    return response.choices[0].message.content
+
+
+def merge_result(outlines, responses):
+    generated_text = ""
+    for i,( outline, response) in enumerate(zip(outlines, responses)):
+        generated_text += f"{outline}\n\n{response}\n\n"
+
+    return generated_text.strip()
+
+
+def topic_chat_completion(prompt):
+    
+    response_name = 'topic'
+    
+    full_custom_functions = [
+        {
+            'name': response_name,
+            'description': 'Topic model',
+            'parameters': Topic.schema()
+        }
+    ]
+
+    response = openai.chat.completions.create(
+        temperature=1.,
+        model='gpt-4-1106-preview',
+        max_tokens=3000,
+        messages=[{'role': 'user', 'content': prompt}],
+        functions=full_custom_functions,
+        function_call={"name": response_name}
+    )
+    
+    return eval(response.choices[0].message.function_call.arguments)
+
+
+@time_function
+async def generate_text_section_based(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable', template=TECHNICAL_DOCUMENT):
+    """Function to generate report in a section based format"""
+    
+    temp = {
+        'stable': 0.,
+        'variable': 1.,
+        'highly variable': 1.9
+    }
+
+    memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
+    conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
+
+    org_info = get_relevant_doc_from_vector_db(goal, url, org)
+    
+    if IS_STREAMLIT_APP:
+        st.markdown("## Here's the EPIC pulled from JIRA")
+        divider()
+        st.write(text_content)
+        divider()
+        st.markdown("## Here's the Organization information extracted (strictly fastdoc)")
+        divider()
+        st.write(org_info)
+        divider()
+    
+    # Section based functions
+    embeddings = embed_docs(text_to_doc(text_content))
+    outlines, instructions = get_section_title(template)
+    responses = [
+        section_text_generation_chat_completion(
+            await relevant_doc(embeddings, " - ".join([outline, instruction])), 
+            tone, goal, outline, doc_type, temp[temperature]
+        )
+        for outline, instruction in zip(
+            list(outlines.values()),
+            instructions
+        )
+    ]
+    responses = await asyncio.gather(*responses)
+    responses = [
+        evaluate_response_content(response) 
+        for response in responses
+    ]
+    generated_text = merge_result(list(outlines.keys()), responses)
+    title = topic_chat_completion(topic_prompt(generate_text, doc_type))['topic']
+    result = {
+        'title': title,
+        'generated_text': generated_text
+    }
+    
+    save(project_id, result['generated_text'], [result['generated_text']], read_memory(conv_chain))
+    
+    return result
+
+
 ### LLM to extract templates from document
 
 @time_function
 def template_api_call(document, temp=1.):
-    response = openai.ChatCompletion.create(
+    response = openai.chat.completions.create(
         temperature=temp,
-        model='gpt-3.5-turbo-16k',
+        model='gpt-4-1106-preview',
         max_tokens=1024,
         messages=[{
             'role': 'user',

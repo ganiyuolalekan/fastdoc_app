@@ -61,6 +61,7 @@ Thumbs.db
 *.env
 venv/
 models/
+.idea/
 
 # test data
 data/

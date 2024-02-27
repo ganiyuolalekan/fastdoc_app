@@ -30,7 +30,7 @@ base_url = "https://fastdoc-jira-integration.onrender.com/"
 
 conversational_llm = ChatOpenAI(
     temperature=0.5,
-    model_name="gpt-3.5-turbo-16k",
+    model_name="gpt-4-1106-preview",
     max_tokens=5120
 )
 
