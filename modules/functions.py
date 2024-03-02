@@ -573,21 +573,28 @@ def generate_summary(text, num_sentences=2, max_iter=200):
 @time_function
 def summarise_document(document, summarization_count=15, paragraph_max_split=2, max_sentence_count=2):
     docs = document.split("\n\n")
-    summarised_docs = []
+    is_jira_template = "template" in docs[0]
+    
+    if is_jira_template:
+        pass
+    else:
+        summarised_docs = []
 
-    for doc in docs:
-        if len(doc.split(' ')) > summarization_count:
-            doc  = '.'.join([
-                s.strip() 
-                for s in doc.split('.') 
-                if len(s) > paragraph_max_split
-            ]).strip()
-            doc = generate_summary(doc, 1)
-            doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
+        for doc in docs:
+            if len(doc.split(' ')) > summarization_count:
+                doc  = '.'.join([
+                    s.strip() 
+                    for s in doc.split('.') 
+                    if len(s) > paragraph_max_split
+                ]).strip()
+                doc = generate_summary(doc, 1)
+                doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
 
-        summarised_docs.append(doc)
+            summarised_docs.append(doc)
+        
+        document = "\n\n".join(summarised_docs)
 
-    return "\n\n".join(summarised_docs)
+    return document, is_jira_template
 
 
 ### Function for the section based approach
@@ -743,15 +750,15 @@ async def generate_text_section_based(project_id, text_content, tone, doc_type, 
 ### LLM to extract templates from document
 
 @time_function
-def template_api_call(document, temp=1.):
+def template_api_call(document, is_jira_template=False, temp=1.):
     response = openai.chat.completions.create(
         temperature=temp,
         model='gpt-4-1106-preview',
         max_tokens=1024,
         messages=[{
             'role': 'user',
-            'content': template_generation_prompt(document)
+            'content': template_generation_prompt(document, is_jira_template=is_jira_template)
         }]
     )
 
-    return response['choices'][0]['message']['content']
+    return response.choices[0].message.content

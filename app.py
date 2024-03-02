@@ -68,7 +68,8 @@ if start_project:
         use_file = st.checkbox("Use file as template", value=True)
         
         if use_file:
-            processed_template = template_api_call(summarise_document(str(read_file_content(file_extract))))
+            doc, is_jira_template = summarise_document(str(read_file_content(file_extract)))
+            processed_template = template_api_call(doc, is_jira_template)
             template = processed_template
         
     with st.expander("Define Template"):

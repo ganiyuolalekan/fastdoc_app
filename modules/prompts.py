@@ -21,9 +21,9 @@ TEMPLATE: {template}
 CONTEXT: {context}
 ORGANIZATION INFORMATION: {org_info}"""
 
-template_generation_prompt = lambda document, example_template=TECHNICAL_DOCUMENT: f"""Given the document below, you're expected to understand and extract the template used in this document. A template is simply the headings and sub-headings - with their purpose - that can form the skeletal structure of any newly formed document. Take a look at the example template below.
+template_generation_prompt = lambda document, example_template=TECHNICAL_DOCUMENT, is_jira_template=False: f"""You're an expert template extractor, given the document below, you're expected to understand and extract the template used in this document. {'A template is simply the headings and sub-headings - with their purpose - that can form the skeletal structure of any newly formed document. Take a look at the example template below.' if not is_jira_template else ""}
 
-NOTE: For your template headings and sub-headings, please ensure you ignore the topics of the headings and sub-headings from the document, only get the general idea of the heading, for example, "Overview of System Authentication" should be interpreted as "Overview" in your template, "Benefits of MFA Implementation" should be interpreted as "Benefits" in your template and so on.
+{'NOTE: For your template headings and sub-headings, please ensure you ignore the topics of the headings and sub-headings from the document, only get the general idea of the heading, for example, "Overview of System Authentication" should be interpreted as "Overview" in your template, "Benefits of MFA Implementation" should be interpreted as "Benefits" in your template and so on.' if not is_jira_template else "Note: Do not add any explanatory note to the beginning or end of the template... just focus on extracting the template alone from the document and returning that template as output"}
 
 DOCUMENT: {document}
 EXAMPLE TEMPLATE: {example_template}"""
