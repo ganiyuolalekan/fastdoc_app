@@ -11,7 +11,7 @@ focused_prompts = {
     "Custom": """You’re an AI system perfect for text generation, as such perfectly understand and study the CONTEXT below making reference to the ORGANIZATION INFORMATION below to provide more context about the organization requesting the text generation. The CONTEXT provided below should act as the MAJOR source of your write up, organization information is intended to be used to help you understand what the organization is about so you generate you text towards their intended goal."""
 }
 
-generation_prompt_template = lambda doc_type, tone, context, org_info, template=TECHNICAL_DOCUMENT, goal=None: f"""{focused_prompts[doc_type]}
+generation_prompt_template = lambda doc_type, tone, context, org_info, template=None, goal=None: f"""{focused_prompts[doc_type]}
 Make use of this information to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Ensure the text you generated is only in the format described below for the {doc_type}. Use the information about the organization to improve/fine-tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
  Always ensure your generated text follows a markdown syntax. Never copy text from the context or use it to fill points in your generated text only when necessary. Finally, ensure your generated text never exceeds 3072 tokens.
  
@@ -21,12 +21,11 @@ TEMPLATE: {template}
 CONTEXT: {context}
 ORGANIZATION INFORMATION: {org_info}"""
 
-template_generation_prompt = lambda document, example_template=TECHNICAL_DOCUMENT, is_jira_template=False: f"""You're an expert template extractor, given the document below, you're expected to understand and extract the template used in this document. {'A template is simply the headings and sub-headings - with their purpose - that can form the skeletal structure of any newly formed document. Take a look at the example template below.' if not is_jira_template else ""}
+template_conversion_prompt = lambda template: f"""You've been provided with a template. Your goal is to represent this template in a markdown syntax version, by accurately identifying h1-h6, notes etc.
 
-{'NOTE: For your template headings and sub-headings, please ensure you ignore the topics of the headings and sub-headings from the document, only get the general idea of the heading, for example, "Overview of System Authentication" should be interpreted as "Overview" in your template, "Benefits of MFA Implementation" should be interpreted as "Benefits" in your template and so on.' if not is_jira_template else "Note: Do not add any explanatory note to the beginning or end of the template... just focus on extracting the template alone from the document and returning that template as output"}
+Your output should be the markdown conversion of the template.
 
-DOCUMENT: {document}
-EXAMPLE TEMPLATE: {example_template}"""
+TEMPLATE:\n{template}"""
 
 conversation_prompt_template = """You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human question and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human questions by modifying the text ONLY, maintaining the paragraphs and point from the input text.
 You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only. Always ensure your generated text follows a markdown syntax.
@@ -52,3 +51,24 @@ Note: your topics should be concise and direct.
 Content
 -------
 {context}"""
+
+template_example = """XX [Topic] Statistics to [Achieve Benefit]
+
+[Introductory sentences (aim for 130 words or less): Did you know that [compelling stat]? Or that [compelling stat]? It’s important to stay on top of [topic] so you can [benefit].
+
+[Overview bullets: So today, we’re sharing with you over X [topic] stats in the following  categories:
+●Category A
+●Category B
+●Category C]
+
+[Transition statement that reinforces value of post, like read on so you can create a [topic] strategy with data-backed confidence.]"""
+
+is_template_prompt = lambda text: f"""Given the text below, your role is to identify if the text is a template or not. 
+
+TEMPLATE EXAMPLE:\n{template_example}
+
+Use the template example you help you better understand what a template is.
+
+Note that a template is a guide for creating posts/content of different kinds. If you identify the text below as a template, your response should only be only 'TRUE', or 'FALSE' if the text isn't identified as a template.
+
+TEXT:\n{text}"""

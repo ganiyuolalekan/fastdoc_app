@@ -40,7 +40,7 @@ def init_project(json_input):
 
     goal = None if keys['goal'] == "" else keys['goal']
 
-    result = asyncio.run(generate_text_section_based(
+    result = generate_text(
         keys['project_id'],
         content,
         keys['tone'],
@@ -50,7 +50,7 @@ def init_project(json_input):
         goal,
         temperature=temp,
         template=keys['template']
-    ))
+    )
 
     title = result['title']
     text = result['generated_text']

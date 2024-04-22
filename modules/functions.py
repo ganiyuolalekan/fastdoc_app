@@ -9,9 +9,8 @@ import chromadb
 import functools
 import streamlit as st
 
-import PyPDF2
-from docx import Document
-import markdown2
+import pdfplumber
+from docx import Document as Doc
 
 from openai import AsyncOpenAI
 
@@ -24,6 +23,8 @@ import networkx as nx
 from typing import List
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+
+from langchain.text_splitter import CharacterTextSplitter
 
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.faiss import FAISS
@@ -40,7 +41,7 @@ from .templates import TECHNICAL_DOCUMENT
 from .classes import GenerationModel, Topic
 from .vector_db_funcs import HOST, PORT
 from .variables import OPENAI_API_KEY, SEPARATORS
-from .prompts import generation_prompt_template, template_generation_prompt, section_prompt, topic_prompt
+from .prompts import generation_prompt_template, template_conversion_prompt, section_prompt, topic_prompt, is_template_prompt
 from .vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
 from .variables import base_url, conversational_llm, conversational_prompt, generated_text_desc
 
@@ -58,6 +59,8 @@ client = chromadb.HttpClient(host=HOST, port=PORT)
 db = {}
 
 IS_STREAMLIT_APP = True
+
+TEMPLATE_INPUT_TOKEN = 250
 
 
 # Wrapper function to time other functions
@@ -381,12 +384,8 @@ def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None,
         divider()
         st.write(text_content)
         divider()
-        st.markdown("## Here's the Organization information extracted (strictly fastdoc)")
-        divider()
-        st.write(org_info)
-        divider()
 
-    response = openai.ChatCompletion.create(
+    response = openai.chat.completions.create(
         temperature=temp[temperature],
         model='gpt-4-1106-preview',
         max_tokens=4096,
@@ -399,7 +398,7 @@ def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None,
         function_call={"name": "text_generation"}
     )
 
-    result = eval(response['choices'][0]['message']['function_call']['arguments'])
+    result = eval(response.choices[0].message.function_call.arguments)
 
     save(project_id, result['generated_text'], [result['generated_text']], read_memory(conv_chain))
 
@@ -474,8 +473,8 @@ def read_file_content(file):
 
     if file_extension == "pdf":
         content = read_pdf(file)
-    # elif file_extension == "docx":
-    #     content = read_docx(file)
+    elif file_extension == "docx":
+        content = read_docx(file)
     elif file_extension == "txt":
         content = read_text(file)
     elif file_extension == "md":
@@ -486,28 +485,25 @@ def read_file_content(file):
     return content
 
 def read_pdf(file):
-    pdf_reader = PyPDF2.PdfReader(file)
-    num_pages = len(pdf_reader.pages)
-    content = ""
-    for page_num in range(num_pages):
-        page = pdf_reader.pages[page_num]
-        content += page.extract_text()
-    return content
+    """Reaf pdf files"""
+    
+    with pdfplumber.open(file) as pdf:
+        text = ""
+        for page in pdf.pages:
+            text += page.extract_text(x_tolerance=2)
+
+    return text
 
 def read_docx(file):
-    doc = Document(file)
-    content = ""
-    for paragraph in doc.paragraphs:
-        content += paragraph.text + "\n"
-    return content
+    """Read word files"""
+    
+    return '\n'.join([
+        paragraph.text
+        for paragraph in Doc(file).paragraphs
+    ])
 
 def read_text(file):
     return file.read().decode('utf-8')
-
-def read_markdown(file):
-    content = file.read()
-    html_content = markdown2.markdown(content)
-    return html_content
 
 
 ### Summarization Functions
@@ -712,10 +708,6 @@ async def generate_text_section_based(project_id, text_content, tone, doc_type, 
         divider()
         st.write(text_content)
         divider()
-        st.markdown("## Here's the Organization information extracted (strictly fastdoc)")
-        divider()
-        st.write(org_info)
-        divider()
     
     # Section based functions
     embeddings = embed_docs(text_to_doc(text_content))
@@ -750,15 +742,41 @@ async def generate_text_section_based(project_id, text_content, tone, doc_type, 
 ### LLM to extract templates from document
 
 @time_function
-def template_api_call(document, is_jira_template=False, temp=1.):
-    response = openai.chat.completions.create(
-        temperature=temp,
-        model='gpt-4-1106-preview',
-        max_tokens=1024,
-        messages=[{
-            'role': 'user',
-            'content': template_generation_prompt(document, is_jira_template=is_jira_template)
-        }]
-    )
+def template_convert_chat_completion(doc):
 
+    response =  openai.chat.completions.create(
+        temperature=0.,
+        model='gpt-4',
+        max_tokens=1024,
+        messages=[{'role': 'user', 'content': template_conversion_prompt(doc)}]
+    )
+    
     return response.choices[0].message.content
+
+
+def template_content_extract(content):
+    """Exrracts a small portion of text to be fed to the LLM (MAX 250 TOKENS)"""
+    
+    text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
+        encoding_name="cl100k_base", chunk_size=TEMPLATE_INPUT_TOKEN, chunk_overlap=0
+    )
+    
+    return text_splitter.split_text(content)[0]
+
+
+def eval_str(text):
+    """Cleans a string that would be used"""
+    
+    return text.replace('"', '').replace("'", '')
+
+
+def template_id_chat_completion(text):
+
+    response =  openai.chat.completions.create(
+        temperature=0.,
+        model='gpt-4',
+        max_tokens=10,
+        messages=[{'role': 'user', 'content': is_template_prompt(text)}]
+    )
+    
+    return eval(eval_str(response.choices[0].message.content).capitalize())

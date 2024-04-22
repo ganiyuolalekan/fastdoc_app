@@ -11,7 +11,7 @@ from .prompts import conversation_prompt_template
 
 load_dotenv()
 
-TEST_LOCAL = False
+TEST_LOCAL = eval(os.getenv('TEST_LOCAL', 'False'))
 
 if TEST_LOCAL:
     # Local Development

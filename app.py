@@ -1,4 +1,9 @@
-TEST_LOCAL = False
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+TEST_LOCAL = eval(os.getenv('TEST_LOCAL', 'False'))
 
 if not TEST_LOCAL:
     __import__('pysqlite3')
@@ -7,7 +12,7 @@ if not TEST_LOCAL:
     sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
-from modules.functions import app_meta, divider, read_file_content, template_api_call, summarise_document
+from modules.functions import app_meta, divider, read_file_content, template_content_extract, template_convert_chat_completion, template_id_chat_completion
 from modules.templates import DOCUMENT_TEMPLATES
 from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
@@ -35,9 +40,9 @@ if start_project:
         doc_type = st.selectbox(
             label="Enter preferred document type",
             options=[
-                "Technical document", "Release Note",
+                "Custom", "Technical document", "Release Note",
                 "Help Article", "FAQ", "Marketing Copy",
-                "Sales Pitch", "User Guide", "Custom"
+                "Sales Pitch", "User Guide"
             ], index=0
         )
         tone = st.selectbox(
@@ -62,15 +67,19 @@ if start_project:
     template = DOCUMENT_TEMPLATES[doc_type]
     
     st.markdown("##### Upload a document to extract it's template - ⭐️EXPERIMENTAL")
-    file_extract = st.file_uploader("Upload Document", type=["pdf", "txt", "md"])
+    file_extract = st.file_uploader("Upload Document", type=["pdf", "txt", "md", "docx"])
     
     if file_extract is not None:
         use_file = st.checkbox("Use file as template", value=True)
         
         if use_file:
-            doc, is_jira_template = summarise_document(str(read_file_content(file_extract)))
-            processed_template = template_api_call(doc, is_jira_template)
-            template = processed_template
+            doc = read_file_content(file_extract)
+            temp_extract = template_content_extract(doc)
+            if template_id_chat_completion(temp_extract):
+                processed_template = template_convert_chat_completion(doc)
+                template = processed_template
+            else:
+                template = None
         
     with st.expander("Define Template"):
         template = st.text_area(
