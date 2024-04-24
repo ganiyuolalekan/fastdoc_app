@@ -41,7 +41,7 @@ from .templates import TECHNICAL_DOCUMENT
 from .classes import GenerationModel, Topic
 from .vector_db_funcs import HOST, PORT
 from .variables import OPENAI_API_KEY, SEPARATORS
-from .prompts import generation_prompt_template, template_conversion_prompt, section_prompt, topic_prompt, is_template_prompt
+from .prompts import generation_prompt_template, template_conversion_prompt, section_prompt, topic_prompt, template_generation_prompt, is_template_prompt
 from .vector_db_funcs import add_data_to_vector_db, create_organization, get_vectorstore
 from .variables import base_url, conversational_llm, conversational_prompt, generated_text_desc
 
@@ -567,30 +567,28 @@ def generate_summary(text, num_sentences=2, max_iter=200):
 
 
 @time_function
-def summarise_document(document, summarization_count=15, paragraph_max_split=2, max_sentence_count=2):
+def summarise_document(document, summarization_count=15, paragraph_max_split=3, max_sentence_count=3):
     docs = document.split("\n\n")
-    is_jira_template = "template" in docs[0]
     
-    if is_jira_template:
-        pass
-    else:
-        summarised_docs = []
+    summarised_docs = []
 
-        for doc in docs:
-            if len(doc.split(' ')) > summarization_count:
-                doc  = '.'.join([
-                    s.strip() 
-                    for s in doc.split('.') 
-                    if len(s) > paragraph_max_split
-                ]).strip()
-                doc = generate_summary(doc, 1)
-                doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
+    for i, doc in enumerate(docs, start=1):
+        if len(doc.split(' ')) > summarization_count:
+            doc  = '.'.join([
+                s.strip() 
+                for s in doc.split('.') 
+                if len(s) > paragraph_max_split
+            ]).strip()
+            doc = generate_summary(doc, 1)
+            doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
 
-            summarised_docs.append(doc)
+        summarised_docs.append(doc)
         
-        document = "\n\n".join(summarised_docs)
+    document = "\n\n".join(summarised_docs)
+    
+    print(document)
 
-    return document, is_jira_template
+    return "\n\n".join(summarised_docs)
 
 
 ### Function for the section based approach
@@ -774,9 +772,24 @@ def template_id_chat_completion(text):
 
     response =  openai.chat.completions.create(
         temperature=0.,
-        model='gpt-4',
+        model='gpt-4-1106-preview',
         max_tokens=10,
         messages=[{'role': 'user', 'content': is_template_prompt(text)}]
     )
     
     return eval(eval_str(response.choices[0].message.content).capitalize())
+
+
+@time_function
+def template_api_call(document, temp=0.3):
+    response = openai.chat.completions.create(
+        temperature=temp,
+        model='gpt-4-1106-preview',
+        max_tokens=1024,
+        messages=[{
+            'role': 'user',
+            'content': template_generation_prompt(document)
+        }]
+    )
+
+    return response.choices[0].message.content

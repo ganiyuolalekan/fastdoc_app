@@ -12,7 +12,7 @@ if not TEST_LOCAL:
     sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
-from modules.functions import app_meta, divider, read_file_content, template_content_extract, template_convert_chat_completion, template_id_chat_completion
+from modules.functions import app_meta, divider, read_file_content, template_content_extract, template_convert_chat_completion, template_id_chat_completion, template_api_call, summarise_document
 from modules.templates import DOCUMENT_TEMPLATES
 from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
@@ -40,7 +40,7 @@ if start_project:
         doc_type = st.selectbox(
             label="Enter preferred document type",
             options=[
-                "Custom", "Technical document", "Release Note",
+                "Technical document", "Release Note",
                 "Help Article", "FAQ", "Marketing Copy",
                 "Sales Pitch", "User Guide"
             ], index=0
@@ -76,13 +76,12 @@ if start_project:
             doc = read_file_content(file_extract)
             temp_extract = template_content_extract(doc)
             if template_id_chat_completion(temp_extract):
-                processed_template = template_convert_chat_completion(doc)
-                template = processed_template
+                template = template_convert_chat_completion(doc)
             else:
-                template = None
+                template = template_api_call(summarise_document(doc))
         
     with st.expander("Define Template"):
-        template = st.text_area(
+        st.text_area(
             label="Define a template for the model",
             value=template,
             height=600

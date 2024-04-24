@@ -2,6 +2,22 @@
 Templates that can be used on the app
 """
 
+EXAMPLE_TEMPLATE = """# [Document Title]
+
+## Introduction
+[A brief introduction of the concept...]
+
+## Objectives
+[The objective of the write-up...]
+
+...
+OTHER OUTLINES FROM THE SOURCE DOCUMENT WITH DEFINATE HEADING TITLES
+[INSTRUCTIONS TO FOLLOW FOR OTHER OUTLINES]
+...
+
+## Conclusion
+[Conclusion of the topic...]"""
+
 TECHNICAL_DOCUMENT = """# [Document Title]
 
 ## Introduction

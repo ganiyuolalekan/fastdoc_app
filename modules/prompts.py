@@ -1,4 +1,4 @@
-from .templates import TECHNICAL_DOCUMENT
+from .templates import EXAMPLE_TEMPLATE
 
 focused_prompts = {
     "Technical document": """Generate a technical document using the CONTEXT and ORGANIZATION INFORMATION provided. Ensure the document includes a clear introduction, a detailed body with headings and subheadings, and a conclusion. Incorporate technical details, jargon, and diagrams where relevant. The document should be concise yet comprehensive, offering in-depth explanations of technical aspects. Your write-up should reflect the organization's objectives and adhere to industry standards for technical documentation.""",
@@ -72,3 +72,15 @@ Use the template example you help you better understand what a template is.
 Note that a template is a guide for creating posts/content of different kinds. If you identify the text below as a template, your response should only be only 'TRUE', or 'FALSE' if the text isn't identified as a template.
 
 TEXT:\n{text}"""
+
+template_generation_prompt = lambda document: f"""Take a look at the example template below.
+
+EXAMPLE TEMPLATE OUTPUT: {EXAMPLE_TEMPLATE}
+
+Given the document below, you're expected to understand and extract the template used in this document. A template is simply the headings and sub-headings - with their purpose - that can form the skeletal structure of any newly formed document.
+
+DOCUMENT: {document}
+
+NOTE: For your template headings and sub-headings, please ensure you ignore the topics of the headings and sub-headings from the document, only get the general idea of the heading, for example, "Overview of System Authentication" should be interpreted as "Overview" in your template, "Benefits of MFA Implementation" should be interpreted as "Benefits" in your template and so on.
+
+Your output must be just the template, with no beginning or ending explanation."""
