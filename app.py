@@ -89,7 +89,7 @@ if start_project:
 
     if submit:
         generate_text_res = init_project(dict_to_json({
-            'goal': goal if goal != "" else None,
+            'goal': goal if goal != "" else f"Generate a {doc_type} document that is helpful",
             'tone': tone,
             'scope': scope,
             'doc_type': doc_type,
