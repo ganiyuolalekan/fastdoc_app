@@ -48,6 +48,8 @@ from .variables import base_url, conversational_llm, conversational_prompt, gene
 import boto3
 from botocore.exceptions import NoCredentialsError, EndpointConnectionError, ClientError
 
+nltk.download('punkt')
+
 load_dotenv()
 
 openai_client = AsyncOpenAI()
@@ -568,27 +570,30 @@ def generate_summary(text, num_sentences=2, max_iter=200):
 
 @time_function
 def summarise_document(document, summarization_count=15, paragraph_max_split=3, max_sentence_count=3):
-    docs = document.split("\n\n")
     
-    summarised_docs = []
-
-    for i, doc in enumerate(docs, start=1):
-        if len(doc.split(' ')) > summarization_count:
-            doc  = '.'.join([
-                s.strip() 
-                for s in doc.split('.') 
-                if len(s) > paragraph_max_split
-            ]).strip()
-            doc = generate_summary(doc, 1)
-            doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
-
-        summarised_docs.append(doc)
+    try:
+        docs = document.split("\n\n")
         
-    document = "\n\n".join(summarised_docs)
-    
-    print(document)
+        summarised_docs = []
 
-    return "\n\n".join(summarised_docs)
+        for i, doc in enumerate(docs, start=1):
+            if len(doc.split(' ')) > summarization_count:
+                doc  = '.'.join([
+                    s.strip() 
+                    for s in doc.split('.') 
+                    if len(s) > paragraph_max_split
+                ]).strip()
+                doc = generate_summary(doc, 1)
+                doc = '.'.join([s.strip() for s in doc.split('.')[:max_sentence_count]])
+
+            summarised_docs.append(doc)
+            
+        document = "\n\n".join(summarised_docs)
+
+        return "\n\n".join(summarised_docs)
+    except Exception as e:
+        print(f"{e}", len(document))
+        return document
 
 
 ### Function for the section based approach
