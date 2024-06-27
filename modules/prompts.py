@@ -12,10 +12,11 @@ focused_prompts = {
 }
 
 generation_prompt_template = lambda doc_type, tone, context, org_info, template=None, goal=None: f"""{focused_prompts[doc_type]}
-Make use of this information to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Ensure the text you generated is only in the format described below for the {doc_type}. Use the information about the organization to improve/fine-tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}", if the provided goal is None, then generate your text only in context to {doc_type} format, using the context below to gain scope/context on your write-up.
- Always ensure your generated text follows a markdown syntax. Never copy text from the context or use it to fill points in your generated text only when necessary. Finally, ensure your generated text never exceeds 3072 tokens.
- 
- Note: you're free to skip sections of the defined templates that you do not have answers/context to, while maintaining the order properly labeled, and in the conclusion of the document, you can offer an explanation of the the missing sections.
+Make use of this information to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Use the information about the organization (if provided) to improve/fine-tune your generated text. Also, ensure it is detailed enough and does not include “accountid” information from the context below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}".
+
+Always ensure your generated text follows a markdown syntax. Do not copy the text from the context as is, instead only make reference to it while your generated text are in your own words.
+
+Note: When reading the context note that the order of the text matters (priority from top-bottom), and you're to place more emphasis on the context above over those below when generating the write-up, you're free to skip sections of the defined templates that you do not have answers/context to, and you can also add more sections as you deem fit to create a compelling "{doc_type}" document.
 
 TEMPLATE: {template}
 CONTEXT: {context}

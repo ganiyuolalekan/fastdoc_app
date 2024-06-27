@@ -6,7 +6,8 @@ from modules.variables import fastdoc_url
 from modules.functions import (
     dict_to_json, exceptions_handler, generate_text, 
     regenerate_report, write_to_s3, json_to_dict, 
-    write_out_report, generate_text_section_based
+    write_out_report, generate_text_section_based,
+    create_contents
 )
 
 
@@ -21,7 +22,7 @@ def init_project(json_input):
     
     scopes = [scope.strip() for scope in keys['scope'].split(',')]
     
-    content = "\n\n".join([f"\n{'-'*50}\n".join([scope, write_out_report(scope)[0]]) for scope in scopes])
+    # content = "\n\n".join([f"\n{'-'*50}\n".join([scope, write_out_report(scope)[0]]) for scope in scopes])
 
     try:
         temp = keys['temperature']
@@ -39,6 +40,7 @@ def init_project(json_input):
         org = "fastdoc"
 
     goal = None if keys['goal'] == "" else keys['goal']
+    content = create_contents(scopes, goal)
 
     result = generate_text(
         keys['project_id'],

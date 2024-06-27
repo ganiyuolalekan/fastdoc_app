@@ -12,7 +12,11 @@ if not TEST_LOCAL:
     sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import streamlit as st
-from modules.functions import app_meta, divider, read_file_content, template_content_extract, template_convert_chat_completion, template_id_chat_completion, template_api_call, summarise_document
+from modules.functions import (
+    app_meta, divider, read_file_content, template_content_extract, 
+    template_convert_chat_completion, template_id_chat_completion, 
+    template_api_call, summarise_document, get_most_similar_template
+)
 from modules.templates import DOCUMENT_TEMPLATES
 from utils import init_project, return_project_value, delete_project, json_to_dict, dict_to_json
 
@@ -65,6 +69,7 @@ if start_project:
     display_generated = display_comment = display_delete = False
     
     template = DOCUMENT_TEMPLATES[doc_type]
+    template = get_most_similar_template(goal, list(template.keys()), template)
     
     st.markdown("##### Upload a document to extract it's template - ⭐️EXPERIMENTAL")
     file_extract = st.file_uploader("Upload Document", type=["pdf", "txt", "md", "docx"])

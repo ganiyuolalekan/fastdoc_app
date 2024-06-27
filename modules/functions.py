@@ -24,6 +24,11 @@ from typing import List
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
+from sentence_transformers import SentenceTransformer, util
+
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
+from langchain_openai import OpenAI
 from langchain.text_splitter import CharacterTextSplitter
 
 from langchain.vectorstores import VectorStore
@@ -37,7 +42,7 @@ from langchain.schema import messages_from_dict, messages_to_dict
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 
-from .templates import TECHNICAL_DOCUMENT
+from .templates import technical_document
 from .classes import GenerationModel, Topic
 from .vector_db_funcs import HOST, PORT
 from .variables import OPENAI_API_KEY, SEPARATORS
@@ -359,7 +364,7 @@ def load(project_id):
 
 
 @time_function
-def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable', template=TECHNICAL_DOCUMENT):
+def generate_text(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable', template=technical_document["Software Development Technical Document"]):
     """Function to generate report"""
 
     temp = {
@@ -692,7 +697,7 @@ def topic_chat_completion(prompt):
 
 
 @time_function
-async def generate_text_section_based(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable', template=TECHNICAL_DOCUMENT):
+async def generate_text_section_based(project_id, text_content, tone, doc_type, url, org, goal=None, temperature='variable', template=technical_document["Software Development Technical Document"]):
     """Function to generate report in a section based format"""
     
     temp = {
@@ -798,3 +803,66 @@ def template_api_call(document, temp=0.3):
     )
 
     return response.choices[0].message.content
+
+
+def get_most_similar_template(goal, templates, temp_dict):
+    """
+    Gets the most similar template using hugging face
+    """
+
+    if len(templates) > 1:
+        model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        
+        goal_embedding = model.encode(goal, convert_to_tensor=True)
+        templates_embeddings = model.encode(templates, convert_to_tensor=True)
+        
+        similarities = util.pytorch_cos_sim(goal_embedding, templates_embeddings)
+        
+        most_similar_idx = similarities.argmax()
+        
+        return temp_dict[templates[most_similar_idx]]
+    else:
+        return temp_dict[templates[0]]
+
+
+def create_contents(scopes, goal):
+    """Using the scopes, we can generate the needed contents"""
+    
+    docs = []
+    for scope in scopes:
+        _content, _key_type = write_out_report(scope)
+        _content = f"\n{'-'*50}\n".join([scope, _content])
+        doc = Document(
+            page_content=_content,
+            metadata={
+                'issue_key': scope,
+                'issue_type': _key_type
+            }
+        )
+        
+        docs.append(doc)
+        
+    retriever = FAISS.from_documents(docs, OpenAIEmbeddings()).as_retriever(
+        search_type="similarity_score_threshold",
+        search_kwargs={
+            "k": 10,
+            "score_threshold": 0.5
+        }
+    )
+    
+    llm = OpenAI(temperature=0)
+    compressor = LLMChainExtractor.from_llm(llm)
+    compression_retriever = ContextualCompressionRetriever(
+        base_compressor=compressor, base_retriever=retriever, k=5
+    )
+    compressed_docs = compression_retriever.invoke(goal)
+    
+    parent_content = []
+    child_content = []
+    for compressed_doc in compressed_docs:
+        if compressed_doc.metadata['issue_type'] == "Parent Issue":
+            parent_content.append(compressed_doc.page_content)
+        else:
+            child_content.append(compressed_doc.page_content)
+    
+    return "\n\n".join(parent_content + child_content)
