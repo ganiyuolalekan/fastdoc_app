@@ -7,7 +7,7 @@ from modules.functions import (
     dict_to_json, exceptions_handler, generate_text, 
     regenerate_report, write_to_s3, json_to_dict, 
     write_out_report, generate_text_section_based,
-    create_contents
+    create_contents, remove_links
 )
 
 
@@ -55,7 +55,7 @@ def init_project(json_input):
     )
 
     title = result['title']
-    text = result['generated_text']
+    text = remove_links(result['generated_text'])
 
     # st.write(write_to_s3(dict_to_json(result), f"{org}/{keys['doc_type']}/{title}.json"))
 

@@ -99,6 +99,20 @@ def exceptions_handler(func):
     return wrapper
 
 
+def remove_links(markdown_text):
+    """Removes link from markdown"""
+    
+    plain_link_pattern = r'(https?://\S+|www\.\S+)'
+    markdown_link_pattern = r'\[([^\]]+)\]\((https?://\S+|www\.\S+)\)'
+    image_link_pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
+    
+    no_image_links = re.sub(image_link_pattern, '', markdown_text)
+    no_markdown_links = re.sub(markdown_link_pattern, '', no_image_links)
+    no_links_text = re.sub(plain_link_pattern, '', no_markdown_links)
+    
+    return no_links_text.strip()
+
+
 def json_to_dict(json_str):
     """Converts a JSON string to a Python dictionary."""
 
