@@ -2,22 +2,6 @@
 Templates that can be used on the app
 """
 
-EXAMPLE_TEMPLATE = """# [Document Title]
-
-## Introduction
-[A brief introduction of the concept...]
-
-## Objectives
-[The objective of the write-up...]
-
-...
-OTHER OUTLINES FROM THE SOURCE DOCUMENT WITH DEFINATE HEADING TITLES
-[INSTRUCTIONS TO FOLLOW FOR OTHER OUTLINES]
-...
-
-## Conclusion
-[Conclusion of the topic...]"""
-
 technical_document = {
     "Software Development Technical Document": """## Introduction
 [Purpose and expected outcome of the document]
@@ -28,37 +12,9 @@ technical_document = {
 ## Implementation Details
 [Code structure, design patterns, and components]
 ## Testing
-[Testing strategies, cases, and results]""",
-    "Product Technical Specification Document": """## Introduction
-[Purpose and context]
-## Product Overview
-[Summary of the product, including its features and benefits]
-## Functional Specifications
-[Detailed description of product functions and features]
-## Technical Specifications
-[Hardware and software requirements, performance metrics]
-## User Interface Design
-[Wireframes, UI components, and interaction flow]""",
-    "Research Technical Document": """## Introduction
-[Background and significance of the research]
-## Research Objectives
-[Goals and objectives of the research]
-## Methodology
-[Research methods and procedures]
-## Results
-[Presentation of research findings]
-## Discussion
-[Interpretation of results and implications]""",
-    " Technical Proposal Document": """## Executive Summary
-[Overview of the proposal, objectives, and expected outcomes]
-## Introduction
-[Background and context of the proposal]
-## Problem Statement
-[Description of the problem or need]
-## Proposed Solution
-[Detailed explanation of the proposed solution]
-## Implementation Plan
-[Step-by-step plan for implementation]"""
+[Testing strategies, cases, and results]
+## Appendices
+[Include any additional information, glossaries, or reference materials.]"""
 }
 
 release_notes = {

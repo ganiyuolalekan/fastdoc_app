@@ -1,108 +1,126 @@
-import asyncio
-
+import os
+import json
+import time
+import openai
+import functools
 import streamlit as st
 
-from modules.variables import fastdoc_url
-from modules.functions import (
-    dict_to_json, exceptions_handler, generate_text, 
-    regenerate_report, write_to_s3, json_to_dict, 
-    write_out_report, generate_text_section_based,
-    create_contents, remove_links
-)
+from classes import GenerationModel
+from prompts import generated_text_desc, generation_prompt_template
+
+from langchain.docstore.document import Document
 
 
-# @exceptions_handler
-def init_project(json_input):
-    """
-    Initializes a new project and creates in id for it in our local database
-    """
+TEST_LOCAL = eval(os.getenv('TEST_LOCAL', 'False'))
 
-    # try:
-    keys = json_to_dict(json_input)
+if TEST_LOCAL:
+    # Local Development
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+else:
+    # Production Development
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
+
+INPUT_TOKEN = 10240
+OUTPUT_TOKEN = 16384
+
+
+def json_to_dict(json_str):
+    """Converts a JSON string to a Python dictionary."""
+
+    return json.loads(json_str)
+
+
+def dict_to_json(dict_data):
+    """Converts a Python dictionary to a JSON string."""
+
+    return json.dumps(dict_data)
+
+
+def time_function(func):
+    """Function to time process during execution"""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        
+        return result, execution_time
+
+    return wrapper
+
+
+def create_contents(issues, goal):
+    """Using the scopes, we can generate the needed contents"""
     
-    scopes = [scope.strip() for scope in keys['scope'].split(',')]
+    docs = []
+    for issue in issues:
+        _content, _key_type = issue['content'], issue['issue_type']
+        doc = Document(
+            page_content=_content,
+            metadata={
+                # 'issue_key': scope,
+                'issue_type': _key_type
+            }
+        )
+        
+        docs.append(doc)
     
-    # content = "\n\n".join([f"\n{'-'*50}\n".join([scope, write_out_report(scope)[0]]) for scope in scopes])
+    if len(docs):
+        parent_content = []
+        child_content = []
+        for doc in docs:
+            if doc.metadata['issue_type'] == "Parent Issue":
+                parent_content.append(doc.page_content)
+            else:
+                child_content.append(doc.page_content)
+        
+        return "\n\n".join(parent_content + child_content)
+    else:
+        return "\n\n".join([_doc.page_content for _doc in docs])
 
-    try:
-        temp = keys['temperature']
-    except KeyError:
-        temp = 'variable'
 
-    try:
-        url = keys['url']
-    except KeyError:
-        url = fastdoc_url
+def process_response(response):
+    """Processes the asynchronous response"""
+    
+    # memory = ConversationBufferMemory(memory_key="chat_history", input_key="human_input")
+    # conv_chain = load_qa_chain(llm=conversational_llm, chain_type="stuff", memory=memory, prompt=conversational_prompt)
+    
+    result = eval(response.choices[0].message.function_call.arguments)
+    
+    return result
 
-    try:
-        org = keys['org']
-    except KeyError:
-        org = "fastdoc"
 
-    goal = None if keys['goal'] == "" else keys['goal']
-    content = create_contents(scopes, goal)
+@time_function
+def generate_text(prompt, temperature='variable'):
+    """Function to generate report"""
 
-    result = generate_text(
-        keys['project_id'],
-        content,
-        keys['tone'],
-        keys['doc_type'],
-        url,
-        org,
-        goal,
-        temperature=temp,
-        template=keys['template']
+    temp = {
+        'stable': 0.,
+        'variable': .5,
+        'highly variable': 1.0
+    }
+
+    generation_custom_functions = [
+        {
+            'name': 'text_generation',
+            'description': generated_text_desc,
+            'parameters': GenerationModel.model_json_schema()
+        }
+    ]
+        
+    response = openai.chat.completions.create(
+        temperature=temp[temperature],
+        model='gpt-4o-mini',
+        max_tokens=OUTPUT_TOKEN,
+        messages=[{
+            'role': 'user',
+            'content': prompt
+        }],
+        functions=generation_custom_functions,
+        function_call={"name": "text_generation"}
     )
 
-    title = result['title']
-    text = remove_links(result['generated_text'])
-
-    # st.write(write_to_s3(dict_to_json(result), f"{org}/{keys['doc_type']}/{title}.json"))
-
-    return dict_to_json({
-        'status': 200,
-        'title': title,
-        'generated_text': text,
-        'log': "Successfully generated report!!!"
-    })
-    # except Exception as e:
-    #     return dict_to_json({
-    #         'status': 503,
-    #         'log': f"Program failed with exception {e}"
-    #     })
-
-
-@exceptions_handler
-def return_project_value(json_input):
-    """Responsible for continuous query for a particular database"""
-
-    try:
-        keys = json_to_dict(json_input)
-
-        re_gen_report = regenerate_report(
-            keys['project_id'],
-            keys['user_query']
-        )
-
-        if type(re_gen_report) == str:
-            return dict_to_json({
-                're-generated_text': re_gen_report,
-                'status': 200,
-                'log': "Successfully re-generated report!!!"
-            })
-        else:
-            return re_gen_report
-    except Exception as e:
-        return dict_to_json({
-            'status': 503,
-            'log': f"Program failed with exception {e}"
-        })
-
-
-def delete_project(json_input):
-    """Responsible for delete a project from ML database"""
-
-    return dict_to_json({
-        'status': 200,
-        'log': "Successfully deleted projects!!!"
-    })
+    return response
