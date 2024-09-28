@@ -107,7 +107,7 @@ def generate_text(prompt, temperature='variable'):
         {
             'name': 'text_generation',
             'description': generated_text_desc,
-            'parameters': GenerationModel.model_json_schema()
+            'parameters': GenerationModel.schema()
         }
     ]
         
