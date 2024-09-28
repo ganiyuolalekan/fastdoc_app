@@ -6,7 +6,7 @@ import functools
 import streamlit as st
 
 from classes import GenerationModel
-from prompts import generated_text_desc, generation_prompt_template
+from prompts import generated_text_desc
 
 from langchain.docstore.document import Document
 
