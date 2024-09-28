@@ -14,7 +14,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-JIRA_BASE_URL = os.getenv('JIRA_BASE_URL')
+TEST_LOCAL = eval(os.getenv('TEST_LOCAL', 'False'))
+
+if TEST_LOCAL:
+    # Local Development
+    JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
+else:
+    # Production Development
+    JIRA_BASE_URL = st.secrets["JIRA_BASE_URL"]
 
 
 def app_meta():
