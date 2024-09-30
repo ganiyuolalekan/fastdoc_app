@@ -150,12 +150,10 @@ def create_issues(keys):
     return content
 
 
-def generate_content(doc_input, prompt=None):
+def generate_content(doc_input, prompt=None, refine_prompt=None, approach="Ordered Issue Approach"):
     """Initializes a new project and creates a database instance"""
-
-    goal = doc_input.get("goal")
     
-    content = create_contents(doc_input["issue"], goal)
+    content, _time = create_contents(doc_input["issue"], refine_prompt, approach)
     text_splitter = CharacterTextSplitter.from_tiktoken_encoder(
         encoding_name="cl100k_base", chunk_size=INPUT_TOKEN, chunk_overlap=0
     )
@@ -170,6 +168,8 @@ def generate_content(doc_input, prompt=None):
         prompt,
         temperature=temperature
     )
+    
+    generation_time += _time
     
     result = process_response(response)
 

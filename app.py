@@ -15,7 +15,7 @@ import streamlit as st
 
 from templates import DOCUMENT_TEMPLATES
 from functions import app_meta, divider, create_issues, create_input, generate_content
-from prompts import generation_prompt_template
+from prompts import generation_prompt_template, document_refine_prompt
 
 
 app_meta()
@@ -35,7 +35,7 @@ if start_project:
         st.markdown("### 1. Input to generate text")
         approach = st.selectbox(
             label="Enter the approach type you'd like to use",
-            options=["Approach 1", "Approach 2"], index=0
+            options=["Ordered Issue Approach", "Refine Input Approach"], index=0
         )
         scope = st.text_input(
             label="Enter Issue key - eg FD-5, FD-12", value="FD-5",
@@ -92,11 +92,26 @@ if start_project:
                 height=400
             )
     
-    if approach == "Approach 1":
+    if approach == "Ordered Issue Approach":
         if submit:
             keys = [s.strip() for s in scope.split(',')]
             issues = create_issues(keys)
             response = generate_content(create_input(keys, issues, goal, tone, doc_type, temperature, template), prompt)
+            st.write("Title: ", response['title'])
+            st.write("Generated in ", round(response['generation_time'], 2), "secs")
+            divider()
+            st.write(response['generated_text'])
+    elif approach == "Refine Input Approach":
+        with st.expander("Refine Prompt"):
+            refine_prompt = st.text_area(
+                label="You can update the prompt here to test",
+                value=document_refine_prompt("", goal, doc_type, is_temp=True),
+                height=400
+            )
+        if submit:
+            keys = [s.strip() for s in scope.split(',')]
+            issues = create_issues(keys)
+            response = generate_content(create_input(keys, issues, goal, tone, doc_type, temperature, template), prompt, refine_prompt, approach)
             st.write("Title: ", response['title'])
             st.write("Generated in ", round(response['generation_time'], 2), "secs")
             divider()

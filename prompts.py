@@ -14,10 +14,12 @@ focused_prompts = {
     "Custom": """You’re an AI system perfect for text generation, as such perfectly understand and study the CONTEXT below making reference to the ORGANIZATION INFORMATION below to provide more information/idea/context about the organization requesting the text generation. The CONTEXT provided below should act as the MAJOR source of your write up, organization information is intended to be used to help you understand what the organization is about so you generate you text towards their intended goal."""
 }
 
-include_context = lambda context, template, is_temp=False: f"""\n\nCONTEXT: ```{context}```{'' if template is None else "TEMPLATE: " + '```' + template + '```'}""" if not is_temp else ""
+include_context = lambda context, template=None, is_temp=False: f"""\n\nCONTEXT: ```{context}```{'' if template is None else "TEMPLATE: " + '```' + template + '```'}""" if not is_temp else ""
 
 generation_prompt_template = lambda doc_type, tone, context, goal, template=None, is_temp=False: f"""{focused_prompts[doc_type]}
 
 Use this information to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Also, ensure it is detailed enough and does not include “accountid” information from the CONTEXT below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}".
 
 Always ensure your generated text follows a markdown syntax. Do not copy the text from the context as is, instead only make reference to it while your generated text are in isr own words.{include_context(context, template, is_temp)}"""
+
+document_refine_prompt = lambda context, goal, doc_type, template=None, is_temp=False: f"""Given the context below, your goal is to refine the context to properly highlight the important components/points mentioned that aligns to the goal "{goal}". Note that this refined context should be detailed enough to be used in the generation of a "{doc_type}" document. Thus, provide every necessary details in generating that document. {include_context(context, template, is_temp)}"""

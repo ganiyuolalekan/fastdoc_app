@@ -6,7 +6,8 @@ import functools
 import streamlit as st
 
 from classes import GenerationModel
-from prompts import generated_text_desc
+
+from prompts import generated_text_desc, include_context
 
 from langchain.docstore.document import Document
 
@@ -52,8 +53,11 @@ def time_function(func):
     return wrapper
 
 
-def create_contents(issues, goal):
-    """Using the scopes, we can generate the needed contents"""
+def ordered_issue(issues):
+    """
+    This approach orders the ticket and uses 
+    the ordered tickets in content generation
+    """
     
     docs = []
     for issue in issues:
@@ -68,18 +72,36 @@ def create_contents(issues, goal):
         
         docs.append(doc)
     
-    if len(docs):
-        parent_content = []
-        child_content = []
-        for doc in docs:
-            if doc.metadata['issue_type'] == "Parent Issue":
-                parent_content.append(doc.page_content)
-            else:
-                child_content.append(doc.page_content)
-        
-        return "\n\n".join(parent_content + child_content)
-    else:
-        return "\n\n".join([_doc.page_content for _doc in docs])
+    parent_content = []
+    child_content = []
+    for doc in docs:
+        if doc.metadata['issue_type'] == "Parent Issue":
+            parent_content.append(doc.page_content)
+        else:
+            child_content.append(doc.page_content)
+    
+    return "\n\n".join(parent_content + child_content)
+
+
+def refine_input(issues, prompt):
+    """
+    Generate a context based output to the model
+    """
+    
+    prompt += include_context(ordered_issue(issues))
+    
+    response, generation_time = refine_context(prompt)
+    
+    return response, generation_time
+
+
+def create_contents(issues, prompt=None, approach="Ordered Issue Approach"):
+    """Using the scopes, we can generate the needed contents"""
+    
+    if approach == "Ordered Issue Approach":
+        return ordered_issue(issues), 0
+    elif approach == "Refine Input Approach":
+        return refine_input(issues, prompt)
 
 
 def process_response(response):
@@ -124,3 +146,20 @@ def generate_text(prompt, temperature='variable'):
     )
 
     return response
+
+
+@time_function
+def refine_context(prompt):
+    """Function to generate report"""
+        
+    response = openai.chat.completions.create(
+        temperature=0.1,
+        model='gpt-4o-mini',
+        max_tokens=OUTPUT_TOKEN,
+        messages=[{
+            'role': 'user',
+            'content': prompt
+        }]
+    )
+
+    return response.choices[0].message.content
