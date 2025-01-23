@@ -23,3 +23,16 @@ Use this information to write/compose a {doc_type} write-up with a descriptive t
 Always ensure your generated text follows a markdown syntax. Do not copy the text from the context as is, instead only make reference to it while your generated text are in isr own words.{include_context(context, template, is_temp)}"""
 
 document_refine_prompt = lambda context, goal, doc_type, template=None, is_temp=False: f"""Given the context below, your goal is to refine the context to properly highlight the important components/points mentioned that aligns to the goal "{goal}". Note that this refined context should be detailed enough to be used in the generation of a "{doc_type}" document. Thus, provide every necessary details in generating that document. {include_context(context, template, is_temp)}"""
+
+refactor_prompt = lambda human_input: f"""You are a text modification/improvement bot. Given a text as input, your role is to re-write an improved version of the text template based on the human suggestion and what you understand from your chat history. You're not to summarise the text but add intuitive parts to it or exclude irrelevant parts from it. Answer the human suggestion by modifying the text ONLY, maintaining the paragraphs and point from the input text.
+You're not to add any comment of affrimation to you text, just answer the question by rewriting the text only. Always ensure your generated text follows a markdown syntax. Do not include links of any kind in your generated report.
+
+User Query: ```{human_input}```"""
+
+section_prompt = lambda context, tone, goal, title, generation_type: f"""You're writing a specific portion (section) of a document, the section is titled {title}. Thus, compose a 80 - 120 word write-up using a {tone} tone on the title "{title}". You're generating this section as part of an organization {generation_type}, and you're to write this section towards this goal {goal}. Your write-up should work entirely from the context provided below. Ensure you do not include hyperlinks in your modified content.
+
+Note: Please go straight to the point and write out the content, do not begin with the title or topic, and you can buttress on you points with paragraphs.
+
+Context
+-------
+{context}"""

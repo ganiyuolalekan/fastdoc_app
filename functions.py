@@ -8,7 +8,7 @@ from langchain_text_splitters import CharacterTextSplitter
 from prompts import include_context
 
 from utils import INPUT_TOKEN
-from utils import dict_to_json, json_to_dict, create_contents, generate_text, process_response
+from utils import dict_to_json, json_to_dict, create_contents, generate_text, process_response, regenerate_report
 
 from dotenv import load_dotenv
 
@@ -182,4 +182,15 @@ def generate_content(doc_input, prompt=None, refine_prompt=None, approach="Order
         "generated_text": text,
         "generation_time": generation_time,
         "log": "Successfully generated report!!!",
+    }
+
+
+def re_generate_content(generated_response, temperature, user_query):
+    re_gen_report, generation_time = regenerate_report(generated_response, temperature, user_query)
+
+    return {
+        "generated_text": remove_links(re_gen_report),
+        "generation_time": generation_time,
+        "status": 200,
+        "log": "Successfully re-generated report!!!",
     }

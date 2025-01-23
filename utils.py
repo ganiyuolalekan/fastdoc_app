@@ -7,9 +7,11 @@ import streamlit as st
 
 from classes import GenerationModel
 
-from prompts import generated_text_desc, include_context
+from prompts import generated_text_desc, include_context, refactor_prompt
 
 from langchain.docstore.document import Document
+
+from langsmith import traceable
 
 
 TEST_LOCAL = eval(os.getenv('TEST_LOCAL', 'False'))
@@ -95,6 +97,7 @@ def refine_input(issues, prompt):
     return response, generation_time
 
 
+@traceable(run_type="retriever")
 def create_contents(issues, prompt=None, approach="Ordered Issue Approach"):
     """Using the scopes, we can generate the needed contents"""
     
@@ -104,6 +107,7 @@ def create_contents(issues, prompt=None, approach="Ordered Issue Approach"):
         return refine_input(issues, prompt)
 
 
+@traceable(run_type="parser")
 def process_response(response):
     """Processes the asynchronous response"""
     
@@ -116,6 +120,7 @@ def process_response(response):
 
 
 @time_function
+@traceable(run_type="llm")
 def generate_text(prompt, temperature='variable'):
     """Function to generate report"""
 
@@ -160,6 +165,40 @@ def refine_context(prompt):
             'role': 'user',
             'content': prompt
         }]
+    )
+
+    return response.choices[0].message.content
+
+
+@time_function
+@traceable(run_type="llm")
+def regenerate_report(generated_report, temperature, user_query):
+    """Regenerates the results based on the users request"""
+    
+    temp = {
+        'stable': 0.,
+        'variable': .5,
+        'highly variable': 1.
+    }
+        
+    response = openai.chat.completions.create(
+        temperature=temp[temperature],
+        model='gpt-4o-mini',
+        max_tokens=OUTPUT_TOKEN,
+        messages=[
+            {
+                'role': 'user',
+                'content': refactor_prompt(user_query)
+            },
+            {
+                'role': "user",
+                'content': generated_report
+            }
+        ],
+        prediction={
+            'type': "content",
+            'content': generated_report
+        },
     )
 
     return response.choices[0].message.content
