@@ -1,90 +1,144 @@
 """
-Templates that can be used on the app
+Enhanced Templates with Optional and Compulsory Headings
 """
 
 technical_document = {
     "Software Development Technical Document": """## Introduction
 [Purpose and expected outcome of the document]
+(Compulsory)
 ## Objectives
 [Goals the document aims to achieve]
+(Optional)
 ## System Architecture
-[Overview of the system architecture]
+[Overview of the system architecture, including diagrams if applicable]
+(Compulsory)
 ## Implementation Details
-[Code structure, design patterns, and components]
+[Code structure, design patterns, components, and algorithms used]
+(Compulsory)
 ## Testing
-[Testing strategies, cases, and results]
+[Testing strategies, test cases, tools used, and results]
+(Compulsory)
+## Best Practices
+[Recommended practices or standards relevant to the project]
+(Optional)
 ## Appendices
-[Include any additional information, glossaries, or reference materials.]"""
+[Include additional resources such as glossaries, references, or related materials]
+(Optional)"""
 }
 
 release_notes = {
     "Release Notes": """## Introduction
-[Brief overview highlighting the key focus of the release.]
+[Brief overview highlighting the key focus of the release and its significance.]
+(Compulsory)
 ## What's New
 [Detailed description of new features, improvements, or updates in this release.]
+(Compulsory)
 ## Bug Fixes
 [List of bugs addressed in this release with a brief description of each.]
+(Compulsory)
 ## Known Issues
 [Outline any known issues that are yet to be resolved.]
-"""
+(Optional)
+## Upgrade Instructions
+[Provide a concise guide on how users can upgrade to the latest release.]
+(Optional)"""
 }
 
 help_articles = {
     "Help Articles": """## Introduction
 [Brief introduction summarizing the purpose of the article and what it will cover.]
+(Compulsory)
 ## Detailed Explanation
 [Comprehensive explanation of the topic, process, or feature using clear and concise language.]
+(Compulsory)
 ## Step-by-Step Guide
-[Include a step-by-step guide with bullet points or numbered steps to make the process easy to follow.]
+[Include a step-by-step guide with numbered or bulleted steps to simplify the process.]
+(Compulsory)
 ## Visual Aids
-[Incorporate screenshots, diagrams, or videos where necessary to enhance understanding and provide visual guidance.]"""
+[Incorporate screenshots, diagrams, or videos to enhance understanding.]
+(Optional)
+## Troubleshooting Tips
+[Provide advice for resolving common issues related to the topic.]
+(Optional)"""
 }
 
 faqs = {
     "FAQs": """## Introduction
-[Provide a brief introduction that sets the context for the FAQs.]
+[Brief introduction providing context for the FAQ section.]
+(Optional)
 ## Frequently Asked Questions
     Q: [Question 1]
     A: [Answer 1]
+(Compulsory)
     Q: [Question 2]
     A: [Answer 2]
+(Compulsory)
     Q: [Question 3]
     A: [Answer 3]
-(Continue with additional questions and answers)
-"""
+(Continue with additional questions and answers as needed)
+## Additional Resources
+[Links or references to related content, guides, or support.]
+(Optional)"""
 }
 
 marketing_copy = {
     "Marketing Copy": """## Headline
-[Create an engaging and attention-grabbing headline that clearly conveys the main benefit or unique value proposition of your product or service.]
+[Engaging and attention-grabbing headline clearly conveying the main benefit or unique value proposition.]
+(Compulsory)
 ## Introduction
 [Briefly introduce the problem or need your product/service addresses.]
+(Compulsory)
 ## Features and Benefits
 [List the key features of your product/service and explain the benefits they provide to the customer.]
+(Compulsory)
+## Testimonials
+[Include quotes or reviews from satisfied customers.]
+(Optional)
 ## Call to Action (CTA)
-[Clearly state what you want the reader to do next (e.g., sign up, purchase, learn more) and make it easy for them to take that action.]"""
+[Clearly state the next step for the reader (e.g., sign up, purchase, learn more).]
+(Compulsory)"""
 }
 
 sales_pitch = {
     "Sales Pitch": """## Introduction
-Start with a brief introduction of yourself and your company, aiming to connect with the prospect.
+[Briefly introduce yourself and your company while connecting with the prospect.]
+(Compulsory)
 ## The Problem
 [Highlight a common problem faced by the prospect's industry or role.]
+(Compulsory)
+## Solution Overview
+[Describe how your product or service solves the problem.]
+(Compulsory)
 ## Customer Success Stories
-[Share stories of how your product/service has helped similar customers overcome similar challenges.]
+[Share stories of how your product/service helped similar customers overcome challenges.]
+(Optional)
+## Closing Statement
+[Wrap up the pitch with a compelling statement to reinforce value.]
+(Compulsory)
 ## Call to Action
-Invite the prospect to take a specific action, such as arranging a follow-up meeting or starting a free trial."""
+[Encourage the prospect to take the next step (e.g., schedule a demo, start a trial).]
+(Compulsory)"""
 }
 
 user_guide = {
     "User Guide": """## Introduction
-[Brief overview of the product and the user guide's purpose.]
+[Overview of the product and the user guide's purpose.]
+(Compulsory)
 ## Quick Start Guide
-[Essential initial setup steps to get the user up and running quickly.]
+[Essential initial setup steps to get users up and running quickly.]
+(Compulsory)
 ## Using the Product
 [Detailed, step-by-step instructions on how to use the product effectively.]
+(Compulsory)
+## Tips and Tricks
+[Additional suggestions or shortcuts for optimal use.]
+(Optional)
+## Troubleshooting
+[Common issues users might face and how to resolve them.]
+(Optional)
 ## Additional Resources
-[Links to further information, tutorials, or customer support for more detailed help]"""
+[Links to tutorials, customer support, or other related materials.]
+(Optional)"""
 }
 
 DOCUMENT_TEMPLATES = {

@@ -107,10 +107,10 @@ if start_project:
             height=400
         )
     
-    if 'generation_report_state' not in st.session_state:
-        st.session_state['generation_report_state'] = {}
-    if 'last_generated_text' not in st.session_state:
-        st.session_state['last_generated_text'] = ""
+    # if 'generation_report_state' not in st.session_state:
+    #     st.session_state['generation_report_state'] = {}
+    # if 'last_generated_text' not in st.session_state:
+    #     st.session_state['last_generated_text'] = ""
     
     template = list(DOCUMENT_TEMPLATES[
         doc_type
@@ -144,12 +144,14 @@ if start_project:
                 temperature, 
                 template
             ), prompt)
-            st.session_state['generation_report_state']["Initial Generation"] = response
+            # st.session_state['generation_report_state']["Initial Generation"] = response
             with generation_tab:
-                st.session_state['last_generated_text'] = response['generated_text']
+                # st.session_state['last_generated_text'] = response['generated_text']
+                last_generated_text = response['generated_text']
                 st.write("Generated in ", round(response['generation_time'], 2), "secs")
                 divider()
-                st.write(st.session_state['last_generated_text'])
+                # st.write(st.session_state['last_generated_text'])
+                st.write(last_generated_text)
     elif approach == "Refine Input Approach":
         with st.expander("Refine Prompt"):
             refine_prompt = st.text_area(
@@ -161,13 +163,15 @@ if start_project:
             keys = [s.strip() for s in scope.split(',')]
             issues = create_issues(keys)
             response = generate_content(create_input(keys, issues, goal, tone, doc_type, temperature, template), prompt, refine_prompt, approach)
-            st.session_state['generation_report_state']["Initial Generation"] = response
+            # st.session_state['generation_report_state']["Initial Generation"] = response
             with generation_tab:
-                st.session_state['last_generated_text'] = response['generated_text']
+                # st.session_state['last_generated_text'] = response['generated_text']
+                last_generated_text = response['generated_text']
                 st.write("Generated in ", round(response['generation_time'], 2), "secs")
                 divider()
-                st.write(st.session_state['generation_report_state']["Initial Generation"]['generated_text'])
-                st.write(st.session_state['generation_report_state'])
+                # st.write(st.session_state['generation_report_state']["Initial Generation"]['generated_text'])
+                # st.write(st.session_state['generation_report_state'])
+                st.write(last_generated_text)
     
     if submit:
         for re_generation_count, tab in enumerate([
@@ -178,14 +182,16 @@ if start_project:
             user_query, re_generate_submit = re_generate_response(count=re_generation_count)
             if re_generate_submit:
                 re_response = re_generate_content(
-                    st.session_state['last_generated_text'], 
+                    # st.session_state['last_generated_text'], 
+                    last_generated_text,
                     temperature, 
                     user_query
                 )
-                st.session_state['generation_report_state'][f"Regeneration {re_generation_count}"] = re_response
-                st.session_state['last_generated_text'] = re_response['generated_text'] 
+                # st.session_state['generation_report_state'][f"Regeneration {re_generation_count}"] = re_response
+                # st.session_state['last_generated_text'] = re_response['generated_text'] 
+                last_generated_text = re_response['generated_text'] 
                 with tab:
                     st.write("Generated in ", round(response['generation_time'], 2), "secs")
                     divider()
-                    st.write(st.session_state['generation_report_state'][f"Regeneration {re_generation_count}"]['generated_text'])
-                    st.write(st.session_state['generation_report_state'])
+                    # st.write(st.session_state['generation_report_state'][f"Regeneration {re_generation_count}"]['generated_text'])
+                    # st.write(st.session_state['generation_report_state'])

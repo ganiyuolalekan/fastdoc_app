@@ -76,6 +76,7 @@ def write_out_report(issue):
     content = f"Jira issue: (key: {issue_key})\n"
     for _fields in issues:
         fields = _fields['fields']
+        key = _fields['key']
         
         try:
             ticket_type = fields['fields']['status']['name']
@@ -84,15 +85,16 @@ def write_out_report(issue):
 
         if not withdraw_pattern.match(ticket_type):
             if fields['summary'] is not None:
-                content += f"\n{issue_key} Issue Summary:\n\n{fields['summary']}\n\n"
+                content += f"\n{key} Issue Summary:\n\n{fields['summary']}\n\n"
             if fields['description'] is not None:
-                content += f"\n{issue_key} Issue Description:\n\n{fields['description']}\n\n"
+                content += f"\n{key} Issue Description:\n\n{fields['description']}\n\n"
 
             comments = fields['comment']['comments']
             if len(comments):
-                content += f"\n{issue_key} Comments:\n\n"
+                content += f"\n{key} Comments:\n\n"
                 for comment in comments:
                     content += f"{comment['body']}\n"
+        content += "\n\n"
 
     return clean_string(content.strip()), issue_key_type
 

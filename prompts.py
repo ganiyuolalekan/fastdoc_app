@@ -4,23 +4,76 @@ TITLE_DESC = "Concise and meaningful title given to a generated text"
 GENERATED_TEXT_DESC = "Generated text on the content topic/title"
 
 focused_prompts = {
-    "Technical document": """Generate a technical document using the CONTEXT provided. Ensure the document includes a clear introduction, a detailed body with headings and subheadings, and a conclusion. Incorporate technical details, jargon, and diagrams where relevant. The document should be concise yet comprehensive, offering in-depth explanations of technical aspects. Your write-up should reflect the organization's objectives and adhere to industry standards for technical documentation.""",
-    "Release Note": """Create a release note based on the CONTEXT. The release note should start with a summary of the new version, followed by a structured list of new features, improvements, and bug fixes. Keep the language clear and concise. Tailor the note to reflect the organization's brand voice and ensure it aligns with the standard format for release notes in the industry.""",
-    "Help Article": """Compose a help article using the CONTEXT provided. The article should address a specific issue or topic, providing clear and easy-to-follow step-by-step guidance. Use a conversational tone suitable for a broad audience. Include a problem statement, solution steps, and FAQs if applicable. The article should align with the organization's style and the standard format for help articles.""",
-    "FAQ": """Develop an FAQ section based on the CONTEXT. Structure the document as a series of common questions followed by concise, clear answers. The tone should be conversational and accessible. Ensure the FAQ is relevant to the target audience and reflects the organization's voice and goals.""",
-    "Marketing Copy": """Write marketing copy using the CONTEXT. The copy should be engaging, persuasive, and align with the brand's voice. Highlight key benefits, features, and what sets the product or service apart. Include a strong call to action. Ensure the copy is tailored to the target audience and meets industry standards for effective marketing content.""",
-    "Sales Pitch": """Craft a sales pitch with the provided CONTEXT. Start with a compelling introduction, then detail the benefits of the product or service, and how it differs from competitors. Conclude with a persuasive call to action. The pitch should be concise, focused on value proposition, and tailored to the target audience, reflecting the organization's sales strategy and industry norms.""",
-    "User Guide": """Generate a user guide based on the CONTEXT. The guide should include an introductory overview, detailed step-by-step instructions, and troubleshooting tips. Incorporate visuals or diagrams where necessary for clarity. Ensure the guide is comprehensive, easy to understand, and aligns with the organization's standards and the typical format of user guides in the industry.""",
-    "Custom": """You’re an AI system perfect for text generation, as such perfectly understand and study the CONTEXT below making reference to the ORGANIZATION INFORMATION below to provide more information/idea/context about the organization requesting the text generation. The CONTEXT provided below should act as the MAJOR source of your write up, organization information is intended to be used to help you understand what the organization is about so you generate you text towards their intended goal."""
+    "Technical document": """You are tasked with generating a technical document based on the CONTEXT provided. Ensure the document is structured with:
+- **Introduction**: Provide a clear overview of the topic, purpose, and its significance.
+- **Detailed Body**: Use headings and subheadings to organize technical details logically. Include explanations, methodologies, examples, diagrams, or charts as needed. Address potential questions or challenges users may encounter.
+- **Conclusion**: Summarize key insights or next steps, reinforcing the value of the content.
+The document should reflect industry standards, use precise and accurate language, and align with the organization’s objectives.""",
+
+    "Release Note": """Generate a structured release note using the CONTEXT provided. The release note should:
+1. Begin with an **Introduction**: Provide a summary of the release, including the version number and its significance.
+2. Highlight **New Features**: List and describe newly added features, focusing on their benefits and use cases.
+3. Detail **Improvements**: Summarize enhancements to existing features, emphasizing how they improve functionality or user experience.
+4. Include **Bug Fixes**: Specify resolved issues, providing clear but concise descriptions.
+5. Add **Known Issues (Optional)**: If applicable, note any remaining issues, including workarounds or expected fixes.
+6. End with **Call to Action**: Encourage users to update, explore new features, or provide feedback.
+
+The tone should be professional, clear, and aligned with the organization’s voice. Maintain a logical structure and ensure all information is accurate and concise.""",
+
+    "Help Article": """Compose a user-focused help article using the CONTEXT provided. The article should:
+1. Begin with a **Problem Statement**: Clearly define the issue or topic being addressed.
+2. Provide **Step-by-Step Instructions**: Use simple, easy-to-follow language, breaking down complex processes into actionable steps.
+3. Include **Tips or FAQs**: Add relevant additional information that may assist users in resolving related issues.
+4. End with a **Call to Action or Next Steps**: Direct users toward further support or additional resources.
+The tone should be conversational, accessible to a broad audience, and align with the organization’s guidelines for help articles.""",
+
+    "FAQ": """Develop a comprehensive FAQ document using the CONTEXT provided. The document should:
+- **Structure**: Present a list of frequently asked questions with concise, clear, and informative answers.
+- **Tone**: Use a conversational and approachable tone while maintaining accuracy and professionalism.
+- **Relevance**: Ensure questions address common concerns or pain points related to the CONTEXT, offering practical, actionable answers.
+- **Extras**: If applicable, group related questions into categories to improve usability, and include links to additional resources for deeper understanding.""",
+
+    "Marketing Copy": """Generate a compelling marketing copy based on the CONTEXT. The copy should:
+1. Start with a **Strong Hook**: Grab the reader’s attention immediately.
+2. Highlight **Unique Selling Points**: Showcase what sets the product, service, or idea apart from competitors.
+3. Emphasize **Benefits**: Focus on how it addresses the audience's needs or solves a problem.
+4. End with a **Call to Action (CTA)**: Prompt the reader to take a specific action, such as purchasing, signing up, or learning more.
+The tone should be persuasive and align with the brand’s voice. Use engaging language and tailor the copy to resonate with the target audience.""",
+
+    "Sales Pitch": """Create a persuasive sales pitch using the CONTEXT. The pitch should:
+- **Introduction**: Start with a compelling statement or question to engage the audience.
+- **Body**: Present the key benefits of the product or service, addressing the audience's specific pain points or needs. Differentiate it from competitors by emphasizing unique advantages.
+- **Closing**: End with a strong, action-oriented call to action that encourages the audience to take the next step.
+The language should be concise, persuasive, and tailored to the intended audience, reflecting the organization’s sales strategy.""",
+
+    "User Guide": """Compose a detailed user guide using the CONTEXT provided. The guide should:
+1. Start with an **Introduction**: Provide an overview of the product, feature, or process being explained, along with its purpose and relevance.
+2. Include **Step-by-Step Instructions**: Break down the process into logical, clear steps. Use numbered lists or bullet points for clarity, and include visuals or diagrams where applicable.
+3. Add **Troubleshooting Tips**: Offer solutions to common problems or challenges users might face.
+4. End with a **Summary or Next Steps**: Recap key points and direct users to further resources if needed.
+The guide should be user-friendly, comprehensive, and adhere to industry best practices for technical writing.""",
+
+    "Custom": """Create a custom write-up using the CONTEXT provided. Analyze the information deeply to understand the organization’s goals, tone, and audience. Use the CONTEXT as the primary source of information, rephrasing it where necessary to produce content that is original, coherent, and tailored to the intended purpose. Ensure the output aligns with the specific needs and objectives outlined by the organization."""
 }
+
 
 include_context = lambda context, template=None, is_temp=False: f"""\n\nCONTEXT: ```{context}```{'' if template is None else "TEMPLATE: " + '```' + template + '```'}""" if not is_temp else ""
 
 generation_prompt_template = lambda doc_type, tone, context, goal, template=None, is_temp=False: f"""{focused_prompts[doc_type]}
 
-Use this information to write/compose a {doc_type} write-up with a descriptive title and its content (the generated text). Also, ensure it is detailed enough and does not include “accountid” information from the CONTEXT below. Use a {tone} tone in your generated output. You're to write towards addressing this goal "{goal}".
+GOAL: ```{goal}```
 
-Always ensure your generated text follows a markdown syntax. Do not copy the text from the context as is, instead only make reference to it while your generated text are in isr own words.{include_context(context, template, is_temp)}"""
+With this goal generate a high-quality {doc_type}. Use the CONTEXT below as the foundation of your write-up, ensuring it reflects the intended purpose, audience, and style of the document. Your task is to understand the GOAL explicitly, whether it is specific, general, or a mix of both, and ensure that the generated content directly aligns with achieving that goal. 
+
+**GOAL Analysis:** Carefully interpret the goal to determine the key priorities and expectations of the user. If the goal is specific, address the explicit requirements. If it is general or descriptive, infer and align with the implied intent, offering a comprehensive, context-aware solution.
+
+Use a {tone} tone in your output and write the content in markdown syntax. Your content should:
+- Avoid copying the CONTEXT verbatim; instead, synthesize and rephrase it into original, coherent, and well-structured language.
+- Focus on improving reasoning, ensuring logical flow, clarity, and conciseness.
+- Highlight the most critical details, prioritizing accuracy and relevance.
+- Reference the CONTEXT and any templates provided (if applicable) to maintain consistency and alignment.
+
+{include_context(context, template, is_temp)}"""
 
 document_refine_prompt = lambda context, goal, doc_type, template=None, is_temp=False: f"""Given the context below, your goal is to refine the context to properly highlight the important components/points mentioned that aligns to the goal "{goal}". Note that this refined context should be detailed enough to be used in the generation of a "{doc_type}" document. Thus, provide every necessary details in generating that document. {include_context(context, template, is_temp)}"""
 
