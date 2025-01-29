@@ -4,11 +4,7 @@ TITLE_DESC = "Concise and meaningful title given to a generated text"
 GENERATED_TEXT_DESC = "Generated text on the content topic/title"
 
 focused_prompts = {
-    "Technical document": """You are tasked with generating a technical document based on the CONTEXT provided. Ensure the document is structured with:
-- **Introduction**: Provide a clear overview of the topic, purpose, and its significance.
-- **Detailed Body**: Use headings and subheadings to organize technical details logically. Include explanations, methodologies, examples, diagrams, or charts as needed. Address potential questions or challenges users may encounter.
-- **Conclusion**: Summarize key insights or next steps, reinforcing the value of the content.
-The document should reflect industry standards, use precise and accurate language, and align with the organization’s objectives.""",
+    "Technical document": """You are tasked with generating a technical document based on the CONTEXT provided. Ensure the document is structured and start by asserting the quality of the provided CONTEXT, and create a good technical document that aligns with the context. Your tecnical documents shoud be informative and accurate.""",
 
     "Release Note": """Generate a structured release note using the CONTEXT provided. The release note should:
 1. Begin with an **Introduction**: Provide a summary of the release, including the version number and its significance.
@@ -72,6 +68,7 @@ Use a {tone} tone in your output and write the content in markdown syntax. Your 
 - Focus on improving reasoning, ensuring logical flow, clarity, and conciseness.
 - Highlight the most critical details, prioritizing accuracy and relevance.
 - Reference the CONTEXT and any templates provided (if applicable) to maintain consistency and alignment.
+- Avoid duplicating contents, and keep your content unique all through.
 
 {include_context(context, template, is_temp)}"""
 

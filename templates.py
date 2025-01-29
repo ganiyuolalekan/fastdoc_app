@@ -5,19 +5,19 @@ Enhanced Templates with Optional and Compulsory Headings
 technical_document = {
     "Software Development Technical Document": """## Introduction
 [Purpose and expected outcome of the document]
-(Compulsory)
+(Optional)
 ## Objectives
 [Goals the document aims to achieve]
 (Optional)
 ## System Architecture
 [Overview of the system architecture, including diagrams if applicable]
-(Compulsory)
+(Optional)
 ## Implementation Details
 [Code structure, design patterns, components, and algorithms used]
-(Compulsory)
+(Optional)
 ## Testing
 [Testing strategies, test cases, tools used, and results]
-(Compulsory)
+(Optional)
 ## Best Practices
 [Recommended practices or standards relevant to the project]
 (Optional)
