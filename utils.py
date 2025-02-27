@@ -121,14 +121,8 @@ def process_response(response):
 
 @time_function
 @traceable(run_type="llm")
-def generate_text(prompt, temperature='variable'):
+def generate_text(prompt):
     """Function to generate report"""
-
-    temp = {
-        'stable': 0.,
-        'variable': .5,
-        'highly variable': 1.0
-    }
 
     generation_custom_functions = [
         {
@@ -139,9 +133,9 @@ def generate_text(prompt, temperature='variable'):
     ]
         
     response = openai.chat.completions.create(
-        temperature=temp[temperature],
-        model='gpt-4o-mini',
-        max_tokens=OUTPUT_TOKEN,
+        # temperature=temp[temperature],
+        model='o3-mini',
+        max_completion_tokens=OUTPUT_TOKEN,
         messages=[{
             'role': 'user',
             'content': prompt
@@ -172,17 +166,11 @@ def refine_context(prompt):
 
 @time_function
 @traceable(run_type="llm")
-def regenerate_report(generated_report, temperature, user_query):
+def regenerate_report(generated_report, user_query):
     """Regenerates the results based on the users request"""
-    
-    temp = {
-        'stable': 0.,
-        'variable': .5,
-        'highly variable': 1.
-    }
         
     response = openai.chat.completions.create(
-        temperature=temp[temperature],
+        temperature=0.,
         model='gpt-4o-mini',
         max_tokens=OUTPUT_TOKEN,
         messages=[

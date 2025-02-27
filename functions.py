@@ -278,15 +278,14 @@ def remove_links(markdown_text):
     return no_plain_links.strip()
 
 
-def create_input(issue_keys, issues, goal, tone, doc_type, temperature, template=None):
+def create_input(issue_keys, issues, goal, document_length, doc_type, template=None):
     
     return {
         "goal": goal,
-        "tone": tone,
+        "document_length": document_length,
         "scope": issue_keys,
         "issue": issues,
         "doc_type": doc_type,
-        "temperature": temperature,
         "template": template,
         "url": "https://testai.atlassian.net/",
         "org": "https://testai.atlassian.net/",
