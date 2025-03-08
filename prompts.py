@@ -136,7 +136,7 @@ generation_prompt_template = lambda doc_type, document_length, context, goal, te
 
 GOAL: ```{goal}```
 
-With this goal generate a high-quality {doc_type}. Use the CONTEXT below as the foundation of your write-up, ensuring it reflects the intended purpose, audience, and style of the document. Your task is to understand the GOAL explicitly, whether it is specific, general, or a mix of both, and ensure that the generated content directly aligns with achieving that goal. 
+With this goal generate a high-quality {doc_type}. Use the CONTEXT below as the foundation of your write-up, ensuring it reflects the intended purpose, audience, and style of the document. Your task is to understand the GOAL explicitly, whether it is specific, general, or a mix of both, and ensure that the generated content directly aligns with achieving that goal.
 
 GOAL Analysis: Carefully interpret the goal to determine the key priorities and expectations of the user. If the goal is specific, address the explicit requirements. If it is general or descriptive, infer and align with the implied intent, offering a comprehensive, context-aware solution.
 
@@ -144,6 +144,8 @@ Note: {doc_length_prompt[document_length]}
 
 Your content should:
 - Avoid copying the CONTEXT verbatim; instead, synthesize and rephrase it into original, coherent, and well-structured language.
+- From the provided context, you do not have to mention that a ticket was used, or the name and properties of the tickets or it's issue type, it's supposed to act strictly as a context for the generated document.
+- You should note the order of the priorities in the context as well as the weight the necessity of the epics to the goal, but you do not have to mention the severity method and importance, you focus should be on a relevant content that can be publised as a finished report.
 - Focus on improving reasoning, ensuring logical flow, clarity, and conciseness.
 - Highlight the most critical details, prioritizing accuracy and relevance.
 - Reference the CONTEXT and any templates provided (if applicable) to maintain consistency and alignment.

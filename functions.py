@@ -54,6 +54,7 @@ def clean_string(input_string):
 
     return cleaned_string
 
+
 def get_issues(issue_key):
     url = JIRA_BASE_URL + f'issues/{issue_key}'
 
@@ -115,6 +116,11 @@ def get_issue_details(issue_key, jira_base_url=JIRA_BASE_URL, username=USER_NAME
     
     issue_data = response.json()
     fields = issue_data.get('fields', {})
+    
+    parent = fields.get('parent', None)
+    is_parent = parent is None
+    parent_name = parent.get('key') if not is_parent else None
+    key_name = fields.get("watches").get("self").split("/watchers")[0].split("/")[-1]
 
     # Get issue type
     issue_type = fields.get('issuetype', {}).get('name', 'Unknown')
@@ -163,18 +169,18 @@ def get_issue_details(issue_key, jira_base_url=JIRA_BASE_URL, username=USER_NAME
         "comments": comments,
         "severity": severity,
         "status": status,
-        "priority": priority
+        "priority": priority,
+        "is_parent": is_parent,
+        "parent_name": parent_name,
+        "key_name": key_name
     }
 
 
-def generate_issue_report(issues):
+def rank_issues(issues):
     """
     Given an array of issue dictionaries, sort them by:
-      1. Issue type: Epics first, then Child, then Story, etc.
-      2. Priority: High > Medium > Low.
-      3. Status: Done > In Review > In Progress > To Do.
-    
-    Then return a formatted string output for the issues.
+      1. Priority: High > Medium > Low.
+      2. Status: Done > In Review > In Progress > To Do.
     
     Each issue dictionary is expected to have the following keys:
       - issue_key (optional): The unique identifier.
@@ -185,6 +191,7 @@ def generate_issue_report(issues):
       - status: The status of the issue.
       - priority: The priority level.
     """
+    
     # Define the sort order for issue types, priority, and status.
     type_order = {
         "Epic": 0,
@@ -217,16 +224,22 @@ def generate_issue_report(issues):
     # Sort the issues according to the defined sort key.
     sorted_issues = sorted(issues, key=sort_key)
     
+    return sorted_issues
+
+
+def write_issues(issues):
+    """
+    Given an array of issue dictionaries, convert it to a report:
+    """
+    
     report_lines = []
-    for issue in sorted_issues:
-        # Use issue_key if provided; otherwise, fallback to summary.
-        key = issue.get("issue_key", issue.get("summary", "N/A"))
-        report_lines.append(f"Issue: {key} ({issue.get('issue_type','N/A')})\n")
-        report_lines.append(f"  Summary: {issue.get('summary','')}\n")
-        report_lines.append(f"  Description: {issue.get('description','')}\n")
-        report_lines.append(f"  Status: {issue.get('status','')}\n")
-        report_lines.append(f"  Priority: {issue.get('priority','')}\n")
-        report_lines.append("  Comments:\n")
+    for i, issue in enumerate(issues):
+        tab = "\t" if i != 0 else ""
+        report_lines.append(f"{tab}{tab}Issue Type: ({issue.get('issue_type','N/A')})\n")
+        report_lines.append(f"  {tab}{tab}Summary: {issue.get('summary','')}\n")
+        report_lines.append(f"  {tab}{tab}Description: {issue.get('description','')}\n")
+        report_lines.append(f"  {tab}{tab}Priority: {issue.get('priority','')}\n")
+        report_lines.append(f"  {tab}{tab}Comments:\n")
         
         # Handle comments: if it's a string, split by newline; if it's a list, iterate directly.
         comments = issue.get("comments", "")
@@ -239,17 +252,72 @@ def generate_issue_report(issues):
             if comment.strip():
                 report_lines.append(f"    - {comment.strip()}")
         report_lines.append("\n")
+        report_lines.append(f"{'--'*30}\n")
     
-    return "\n\n".join(report_lines)
+    return "\n\n".join(report_lines) + f"\n{'--'*30}\n\n"
+
+
+def match_child_to_epics(epics, children):
+    """
+    Given a list of epics and a list of child issues, match each child to its corresponding epic.
+    
+    The result will be a dictionary where each epic key maps to a list of its child issues.
+    """
+    
+    epic_dict = {
+        epic.get("key_name", ""): epic
+        for epic in epics
+    }
+    unmapped_children = []
+    mapped_epics = {}
+    for child in children:
+        parent_key = child.get("parent_name", "")
+        if parent_key in list(epic_dict.keys()):
+            if parent_key not in mapped_epics:
+                mapped_epics[parent_key] = []
+                mapped_epics[parent_key].append(child)
+            else:
+                mapped_epics[parent_key].append(child)
+        else:
+            unmapped_children.append(child)
+    
+    epic_set = []
+    for epic in mapped_epics:
+        epic_child_issues = mapped_epics[epic]
+        epic_child_issues.append(epic_dict[epic])
+        epic_set.append(rank_issues(epic_child_issues))
+    
+    epic_set.append(rank_issues(unmapped_children))
+    
+    # st.write(epic_set)
+    
+    return epic_set
 
 
 def write_out_report(issues):
     """Extracts an issues context from Jira as a report, using the issue key"""
-
-    return clean_string(generate_issue_report([
+    
+    issue_details = [
         get_issue_details(issue)
         for issue in issues
-    ]))
+    ]
+    
+    epics = [
+        issue 
+        for issue in issue_details 
+        if issue['issue_type'] == 'Epic'
+    ]
+    non_epics = [
+        issue 
+        for issue in issue_details 
+        if issue['issue_type'] != 'Epic'
+    ]
+    
+    epic_set = match_child_to_epics(epics, non_epics)
+    
+    final_report = "\n".join([write_issues(issues) for issues in epic_set])
+
+    return clean_string(final_report)
 
 
 def remove_links(markdown_text):
