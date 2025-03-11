@@ -111,7 +111,6 @@ def get_issue_details(issue_key, jira_base_url=JIRA_BASE_URL, username=USER_NAME
     
     response = requests.get(url, auth=auth, headers=headers)
     if response.status_code != 200:
-        print(f"Failed to retrieve issue details: {response.status_code}")
         return None
     
     issue_data = response.json()
@@ -265,26 +264,24 @@ def match_child_to_epics(epics, children):
     """
     
     epic_dict = {
-        epic.get("key_name", ""): epic
+        epic.get("key_name"): epic
         for epic in epics
     }
     unmapped_children = []
-    mapped_epics = {}
+    mapped_epics = {
+        epic.get("key_name"): [epic]
+        for epic in epics
+    }
     for child in children:
         parent_key = child.get("parent_name", "")
         if parent_key in list(epic_dict.keys()):
-            if parent_key not in mapped_epics:
-                mapped_epics[parent_key] = []
-                mapped_epics[parent_key].append(child)
-            else:
-                mapped_epics[parent_key].append(child)
+            mapped_epics[parent_key].append(child)
         else:
             unmapped_children.append(child)
     
     epic_set = []
     for epic in mapped_epics:
         epic_child_issues = mapped_epics[epic]
-        epic_child_issues.append(epic_dict[epic])
         epic_set.append(rank_issues(epic_child_issues))
     
     epic_set.append(rank_issues(unmapped_children))
@@ -316,6 +313,8 @@ def write_out_report(issues):
     epic_set = match_child_to_epics(epics, non_epics)
     
     final_report = "\n".join([write_issues(issues) for issues in epic_set])
+    
+    print("Final Report", final_report)
 
     return clean_string(final_report)
 
