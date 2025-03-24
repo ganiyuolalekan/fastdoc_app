@@ -82,6 +82,24 @@ def extract_plain_text(node):
     return text
 
 
+def get_all_fields(jira_base_url, username, api_token):
+    """
+    Retrieve all fields from Jira, including custom fields, to map field IDs to names.
+    """
+    url = f"{jira_base_url}/rest/api/3/field"
+    auth = HTTPBasicAuth(username, api_token)
+    headers = {"Accept": "application/json"}
+    
+    response = requests.get(url, auth=auth, headers=headers)
+    if response.status_code != 200:
+        return {}
+    
+    fields_data = response.json()
+    field_map = {field['name']: field['id'] for field in fields_data if field['id'].startswith('customfield_')}
+    
+    return field_map
+
+
 def get_issue_details(issue_key, jira_base_url=JIRA_BASE_URL, username=USER_NAME, api_token=JIRA_API_KEY):
     """
     Retrieve specific details of an issue from Jira.
@@ -109,12 +127,27 @@ def get_issue_details(issue_key, jira_base_url=JIRA_BASE_URL, username=USER_NAME
     auth = HTTPBasicAuth(username, api_token)
     headers = {"Accept": "application/json"}
     
+    all_custom_fields = get_all_fields(jira_base_url, username, api_token)
+    
     response = requests.get(url, auth=auth, headers=headers)
     if response.status_code != 200:
         return None
     
     issue_data = response.json()
     fields = issue_data.get('fields', {})
+    
+    custom_fields_values = {
+        _name: fields.get(_field) 
+        for _field, _name in zip(
+            list(all_custom_fields.values()),
+            list(all_custom_fields.keys())
+        )
+        if (fields.get(_field) is not None) and (_name not in [
+            "Request participants", "[CHART] Date of First Response", "Parent Link",
+            "Rank", "Start date", "Organizations"
+        ])
+    }
+    custom_fields_values = None if custom_fields_values == {} else custom_fields_values
     
     parent = fields.get('parent', None)
     is_parent = parent is None
@@ -171,7 +204,8 @@ def get_issue_details(issue_key, jira_base_url=JIRA_BASE_URL, username=USER_NAME
         "priority": priority,
         "is_parent": is_parent,
         "parent_name": parent_name,
-        "key_name": key_name
+        "key_name": key_name,
+        "custom_fields": custom_fields_values
     }
 
 
@@ -238,8 +272,16 @@ def write_issues(issues):
         report_lines.append(f"  {tab}{tab}Summary: {issue.get('summary','')}\n")
         report_lines.append(f"  {tab}{tab}Description: {issue.get('description','')}\n")
         report_lines.append(f"  {tab}{tab}Priority: {issue.get('priority','')}\n")
-        report_lines.append(f"  {tab}{tab}Comments:\n")
         
+        # Add custom fields if available
+        if issue.get("custom_fields") is not None:
+            report_lines.append(f"  {tab}{tab}Custom Fields Added To The Data Ticket\n")
+            fields = issue.get("custom_fields")
+            for field in fields:
+                report_lines.append(f"    - {field}: {fields[field]}")
+        
+        # Add comments if available
+        report_lines.append(f"  {tab}{tab}Comments:\n")
         # Handle comments: if it's a string, split by newline; if it's a list, iterate directly.
         comments = issue.get("comments", "")
         if isinstance(comments, str):
@@ -286,8 +328,6 @@ def match_child_to_epics(epics, children):
     
     epic_set.append(rank_issues(unmapped_children))
     
-    # st.write(epic_set)
-    
     return epic_set
 
 
@@ -313,8 +353,6 @@ def write_out_report(issues):
     epic_set = match_child_to_epics(epics, non_epics)
     
     final_report = "\n".join([write_issues(issues) for issues in epic_set])
-    
-    print("Final Report", final_report)
 
     return clean_string(final_report)
 

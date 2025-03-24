@@ -155,6 +155,7 @@ Your content should:
 - Ensure the headings and seb-headings of headings are properly formatted within the markdown.
 - When generating the {doc_type}, only use the context as your source of information, do not attempt to fomulate ideas outside that context.
 - when generating using a template, you are to skip sections of the template where the provided context has no relevant information to write about, it shouldn't be included as part of the output.
+- Take note of the information from the custom fields (if passed), and ensure they are used improve the quality of the output
 {include_context(context, template, is_temp)}"""
 
 document_refine_prompt = lambda context, goal, doc_type, template=None, is_temp=False: f"""Given the context below, your goal is to refine the context to properly highlight the important components/points mentioned that aligns to the goal "{goal}". Note that this refined context should be detailed enough to be used in the generation of a "{doc_type}" document. Thus, provide every necessary details in generating that document. {include_context(context, template, is_temp)}"""

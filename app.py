@@ -34,7 +34,8 @@ def generate_response():
     with st.sidebar:
         st.markdown("### 1. Input to generate text")
         scope = st.text_input(
-            label="Enter Issue key - eg FD-5, FD-12", value="SPX-21, SPX-20, SPX-19, SPX-18, SPX-17, SPX-16, SPX-13, SPX-12, SPX-11, SPX-10, SPX-7, SPX-6",
+            # label="Enter Issue key - eg FD-5, FD-12", value="SPX-21, SPX-20, SPX-19, SPX-18, SPX-17, SPX-16, SPX-13, SPX-12, SPX-11, SPX-10, SPX-7, SPX-6",
+            label="Enter Issue key - eg FD-5, FD-12", value="FD-106",
             help="You can enter multiple issue keys, separate them by commas (,)"
         )
         doc_type = st.selectbox(
